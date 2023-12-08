@@ -1,66 +1,27 @@
-## Foundry
+# rain.intorastring
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Provides an unsigned integer type `IntOrAString` that can be used to represent
+a packed string in a single evm word.
 
-Foundry consists of:
+Tries to do as little as possible, respecting the basic constraint, which is
+that we only have 32 bytes of data to work with. There are no fallbacks, errors,
+conditionals or unsupported edge cases and minimal jumps generally.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Every possible `IntOrAString` value will produce a string when `toString` is
+called, and vice versa, every possible string will create an `IntOrAString`.
 
-## Documentation
+The length of the string in the packed representation is read from the leftmost
+byte, using the rightmost 5 bits of that byte. By using 5 bits for the length we
+naturally achieve a 31 byte limit on the string data, with the "weird" side
+effect that strings are truncated to `mod 32` whatever their original length was,
+on both `toString` and `fromString`.
 
-https://book.getfoundry.sh/
+Probably the caller does not want strings truncating to a `mod` of their length,
+so they should ensure that they don't feed anything that they don't want
+truncated into this lib.
 
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+`LibIntOrAString` is careful to zero out data beyond input `string` values upon
+creation, but will reproduce any garbage bytes from an `IntOrAString` into
+memory on the round trip back to a `string`. Generally `string` values are bound
+by their length, so any code that reads the produced `string` should not enter
+these garbage bytes in memory anyway.
