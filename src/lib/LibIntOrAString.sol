@@ -75,6 +75,7 @@ library LibIntOrAString {
         assembly ("memory-safe") {
             intOrAString := and(mload(add(s, 0x1F)), mask)
             let garbageLength := sub(0x1F, byte(0, intOrAString))
+            //slither-disable-next-line incorrect-shift
             let garbageMask := not(sub(shl(mul(garbageLength, 8), 1), 1))
             intOrAString := and(intOrAString, garbageMask)
         }
