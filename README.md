@@ -25,3 +25,12 @@ creation, but will reproduce any garbage bytes from an `IntOrAString` into
 memory on the round trip back to a `string`. Generally `string` values are bound
 by their length, so any code that reads the produced `string` should not enter
 these garbage bytes in memory anyway.
+
+`LibIntOrAString` sets the high bit of `IntOrAString` values that it creates from
+strings to `1` to ensure that they are always treated as truthy values. I.e. no
+string input ever maps to `0`.
+
+`LibIntOrAString` will interpret `0` and many other integer values that it cannot
+produce as strings, if high/garbage bits are set/unset in ways it doesn't care
+about when reading integers. It is strongly recommended to only roundtrip values
+through compatible versions of this lib.
