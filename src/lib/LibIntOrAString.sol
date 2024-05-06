@@ -44,7 +44,7 @@ library LibIntOrAString {
     /// beyond the string length, so if the `intOrAString` was created from a
     /// string using this library, there won't be any non-zero bytes beyond the
     /// length.
-    function toString(IntOrAString intOrAString) internal pure returns (string memory) {
+    function toString2(IntOrAString intOrAString) internal pure returns (string memory) {
         string memory s;
         uint256 mask = INT_OR_A_STRING_MASK;
         assembly ("memory-safe") {
@@ -69,7 +69,7 @@ library LibIntOrAString {
     /// 32 in the process. Any bytes beyond the length of the string will be
     /// zeroed out, to ensure that no potentially sensitive data in memory is
     /// copied into the `IntOrAString`.
-    function fromString(string memory s) internal pure returns (IntOrAString) {
+    function fromString2(string memory s) internal pure returns (IntOrAString) {
         IntOrAString intOrAString;
         uint256 mask = INT_OR_A_STRING_MASK;
         assembly ("memory-safe") {
