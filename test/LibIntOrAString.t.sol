@@ -29,7 +29,7 @@ contract LibIntOrAStringTest is Test {
     function testRoundTripString(string memory s) external {
         vm.assume(bytes(s).length <= 31);
         putGarbageInUnallocatedMemory();
-        assertEq(LibIntOrAString.toString2(LibIntOrAString.fromString2(s)), s);
+        assertEq(LibIntOrAString.toString(LibIntOrAString.fromString2(s)), s);
     }
 
     /// All strings of any length should round trip but be truncated to their
@@ -42,7 +42,7 @@ contract LibIntOrAStringTest is Test {
         );
         LibBytes.truncate(truncated, truncated.length % 32);
 
-        assertEq(LibIntOrAString.toString2(LibIntOrAString.fromString2(s)), string(truncated));
+        assertEq(LibIntOrAString.toString(LibIntOrAString.fromString2(s)), string(truncated));
     }
 
     /// Test directly that the length (leftmost byte) of an `IntOrAString` is
@@ -88,16 +88,16 @@ contract LibIntOrAStringTest is Test {
 
     /// Directly test that all possible `IntOrAString` values can be converted to
     /// a string that is less than 32 bytes long.
-    function testToString2(IntOrAString intOrAString) external {
+    function testToString(IntOrAString intOrAString) external {
         putGarbageInUnallocatedMemory();
-        string memory s = LibIntOrAString.toString2(intOrAString);
+        string memory s = LibIntOrAString.toString(intOrAString);
         assertTrue(bytes(s).length < 0x20);
     }
 
-    /// Test `toString2` against reference implementation.
-    function testToString2AgainstSlow(IntOrAString intOrAString) external {
+    /// Test `toString` against reference implementation.
+    function testToStringAgainstSlow(IntOrAString intOrAString) external {
         putGarbageInUnallocatedMemory();
-        string memory s = LibIntOrAString.toString2(intOrAString);
+        string memory s = LibIntOrAString.toString(intOrAString);
         string memory slow = LibIntOrAStringSlow.toStringSlow(intOrAString);
         assertEq(s, slow);
     }
@@ -117,11 +117,11 @@ contract LibIntOrAStringTest is Test {
         assertTrue(IntOrAString.unwrap(intOrAString) > 0);
     }
 
-    /// Test `toString2` returns an empty string for `0`. This is a special case
+    /// Test `toString` returns an empty string for `0`. This is a special case
     /// for backwards compatibility before the high bit was set to `1` for truthy
     /// string enforcement.
-    function testToString2Zero() external {
+    function testToStringZero() external {
         putGarbageInUnallocatedMemory();
-        assertEq(LibIntOrAString.toString2(IntOrAString.wrap(0)), "");
+        assertEq(LibIntOrAString.toString(IntOrAString.wrap(0)), "");
     }
 }
