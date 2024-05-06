@@ -34,6 +34,8 @@ library LibIntOrAStringSlow {
         }
         // Pad right with zeros.
         output = output << (248 - (length * 8));
+        // Set the high bit to ensure strings are always truthy.
+        output = output | (1 << 255);
 
         return IntOrAString.wrap(output);
     }

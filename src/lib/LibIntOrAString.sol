@@ -6,6 +6,10 @@ pragma solidity ^0.8.19;
 /// and from strings.
 uint256 constant INT_OR_A_STRING_MASK = ~(uint256(7) << 253);
 
+/// @dev Set the high bit of the uint256 that represents an `IntOrAString` to
+/// ensure that strings are always interpreted as truthy, even if they are empty.
+uint256 constant TRUTHY_HIGH_BIT = 1 << 0xFF;
+
 /// Represents string data as an unsigned 32 byte integer. The highest 3 bits are
 /// ignored when interpreting the integer as a string length, naturally limiting
 /// the length of the string to 31 bytes. The lowest 31 bytes are the string
@@ -15,6 +19,9 @@ uint256 constant INT_OR_A_STRING_MASK = ~(uint256(7) << 253);
 /// conversion will exhibit the "weird" behaviour of truncating the output to
 /// modulo 32 of the length. If the caller wishes to avoid this behaviour, they
 /// should check and error on lengths greater than 31 bytes.
+///
+/// The high bit of an `IntOrString` is always set to `1`, to ensure that the
+/// integer is always truthy, even if the string is empty.
 type IntOrAString is uint256;
 
 /// @title LibIntOrAString
@@ -68,16 +75,19 @@ library LibIntOrAString {
     /// Converts a `string` to an `IntOrAString`, truncating the length to modulo
     /// 32 in the process. Any bytes beyond the length of the string will be
     /// zeroed out, to ensure that no potentially sensitive data in memory is
-    /// copied into the `IntOrAString`.
-    function fromString(string memory s) internal pure returns (IntOrAString) {
+    /// copied into the `IntOrAString`. The high bit of the `IntOrAString` is
+    /// always set to `1`, to ensure that strings are always interpreted as
+    /// truthy, even if they are empty.
+    function fromString2(string memory s) internal pure returns (IntOrAString) {
         IntOrAString intOrAString;
         uint256 mask = INT_OR_A_STRING_MASK;
+        uint256 truthyHighBit = TRUTHY_HIGH_BIT;
         assembly ("memory-safe") {
             intOrAString := and(mload(add(s, 0x1F)), mask)
             let garbageLength := sub(0x1F, byte(0, intOrAString))
             //slither-disable-next-line incorrect-shift
             let garbageMask := not(sub(shl(mul(garbageLength, 8), 1), 1))
-            intOrAString := and(intOrAString, garbageMask)
+            intOrAString := or(and(intOrAString, garbageMask), truthyHighBit)
         }
         return intOrAString;
     }
