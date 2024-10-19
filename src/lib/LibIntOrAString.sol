@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: CAL
-pragma solidity ^0.8.19;
+// SPDX-License-Identifier: LicenseRef-DCL-1.0
+// SPDX-FileCopyrightText: Copyright (c) 2020 thedavidmeister
+pragma solidity ^0.8.25;
 
 /// @dev This masks out the top 3 bits of a uint256, leaving the lower 253 bits
 /// intact. This ensures the length never exceeds 31 bytes when converting to

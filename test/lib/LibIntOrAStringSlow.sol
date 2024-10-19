@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: CAL
-pragma solidity ^0.8.19;
+// SPDX-License-Identifier: LicenseRef-DCL-1.0
+// SPDX-FileCopyrightText: Copyright (c) 2020 thedavidmeister
+pragma solidity =0.8.25;
 
-import {IntOrAString} from "../src/lib/LibIntOrAString.sol";
+import {IntOrAString} from "src/lib/LibIntOrAString.sol";
 
 library LibIntOrAStringSlow {
     function toStringSlow(IntOrAString intOrAString) internal pure returns (string memory) {

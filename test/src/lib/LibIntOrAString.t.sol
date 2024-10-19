@@ -1,12 +1,13 @@
-// SPDX-License-Identifier: CAL
-pragma solidity =0.8.19;
+// SPDX-License-Identifier: LicenseRef-DCL-1.0
+// SPDX-FileCopyrightText: Copyright (c) 2020 thedavidmeister
+pragma solidity =0.8.25;
 
 import {Test, console2} from "forge-std/Test.sol";
 
 import {LibIntOrAString, IntOrAString, TRUTHY_HIGH_BIT} from "src/lib/LibIntOrAString.sol";
 import {LibBytes} from "rain.solmem/lib/LibBytes.sol";
 import {LibMemCpy} from "rain.solmem/lib/LibMemCpy.sol";
-import {LibIntOrAStringSlow} from "./LibIntOrAStringSlow.sol";
+import {LibIntOrAStringSlow} from "test/lib/LibIntOrAStringSlow.sol";
 
 contract LibIntOrAStringTest is Test {
     /// We can't assume that the memory pointed to by 0x40 is zeroed, so we
@@ -26,7 +27,7 @@ contract LibIntOrAStringTest is Test {
     }
 
     /// All strings 31 bytes or less should round trip cleanly.
-    function testRoundTripString(string memory s) external {
+    function testRoundTripString(string memory s) external pure {
         vm.assume(bytes(s).length <= 31);
         putGarbageInUnallocatedMemory();
         assertEq(LibIntOrAString.toString(LibIntOrAString.fromString2(s)), s);
@@ -34,7 +35,7 @@ contract LibIntOrAStringTest is Test {
 
     /// All strings of any length should round trip but be truncated to their
     /// length modulo 32.
-    function testRoundTripStringTruncated(string memory s) external {
+    function testRoundTripStringTruncated(string memory s) external pure {
         putGarbageInUnallocatedMemory();
         bytes memory truncated = new bytes((bytes(s).length));
         LibMemCpy.unsafeCopyBytesTo(
@@ -47,7 +48,7 @@ contract LibIntOrAStringTest is Test {
 
     /// Test directly that the length (leftmost byte) of an `IntOrAString` is
     /// the length of the string it was created from modulo 32.
-    function testFromString2Length(string memory s) external {
+    function testFromString2Length(string memory s) external pure {
         putGarbageInUnallocatedMemory();
         IntOrAString intOrAString = LibIntOrAString.fromString2(s);
         assertEq((IntOrAString.unwrap(intOrAString) & ~TRUTHY_HIGH_BIT) >> 248, bytes(s).length % 32);
@@ -55,7 +56,7 @@ contract LibIntOrAStringTest is Test {
 
     /// Test that building an `IntOrAString` from a string never includes any
     /// bytes in memory beyond the length of the string.
-    function testFromString2Garbage(string memory s, uint256 truncatedLength) external {
+    function testFromString2Garbage(string memory s, uint256 truncatedLength) external pure {
         putGarbageInUnallocatedMemory();
         vm.assume(bytes(s).length > 1);
         truncatedLength = bound(truncatedLength, 1, bytes(s).length - 1);
@@ -71,7 +72,7 @@ contract LibIntOrAStringTest is Test {
 
     /// Test that building an `IntOrAString` from a 0 length string never
     /// includes any bytes in memory beyond the length of the string.
-    function testFromString2ZeroLengthGarbage() external {
+    function testFromString2ZeroLengthGarbage() external pure {
         putGarbageInUnallocatedMemory();
         // Put a new string directly into scratch space with 0 length and all
         // ones for the adjacent data (that should not be included in output).
@@ -88,14 +89,14 @@ contract LibIntOrAStringTest is Test {
 
     /// Directly test that all possible `IntOrAString` values can be converted to
     /// a string that is less than 32 bytes long.
-    function testToString(IntOrAString intOrAString) external {
+    function testToString(IntOrAString intOrAString) external pure {
         putGarbageInUnallocatedMemory();
         string memory s = LibIntOrAString.toString(intOrAString);
         assertTrue(bytes(s).length < 0x20);
     }
 
     /// Test `toString` against reference implementation.
-    function testToStringAgainstSlow(IntOrAString intOrAString) external {
+    function testToStringAgainstSlow(IntOrAString intOrAString) external pure {
         putGarbageInUnallocatedMemory();
         string memory s = LibIntOrAString.toString(intOrAString);
         string memory slow = LibIntOrAStringSlow.toStringSlow(intOrAString);
@@ -103,7 +104,7 @@ contract LibIntOrAStringTest is Test {
     }
 
     /// Test `fromString2` against reference implementation.
-    function testFromString2AgainstSlow(string memory s) external {
+    function testFromString2AgainstSlow(string memory s) external pure {
         putGarbageInUnallocatedMemory();
         IntOrAString intOrAString = LibIntOrAString.fromString2(s);
         IntOrAString slow = LibIntOrAStringSlow.fromStringSlow(s);
@@ -111,7 +112,7 @@ contract LibIntOrAStringTest is Test {
     }
 
     /// Test `fromString2` always returns truthy numeric values (never `0`).
-    function testFromString2Truthy(string memory s) external {
+    function testFromString2Truthy(string memory s) external pure {
         putGarbageInUnallocatedMemory();
         IntOrAString intOrAString = LibIntOrAString.fromString2(s);
         assertTrue(IntOrAString.unwrap(intOrAString) > 0);
@@ -120,7 +121,7 @@ contract LibIntOrAStringTest is Test {
     /// Test `toString` returns an empty string for `0`. This is a special case
     /// for backwards compatibility before the high bit was set to `1` for truthy
     /// string enforcement.
-    function testToStringZero() external {
+    function testToStringZero() external pure {
         putGarbageInUnallocatedMemory();
         assertEq(LibIntOrAString.toString(IntOrAString.wrap(0)), "");
     }
