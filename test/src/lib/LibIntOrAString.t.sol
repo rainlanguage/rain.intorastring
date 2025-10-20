@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2020 Rain Open Source Software Ltd
 pragma solidity =0.8.25;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import {LibIntOrAString, IntOrAString, TRUTHY_HIGH_BIT} from "src/lib/LibIntOrAString.sol";
 import {LibBytes} from "rain.solmem/lib/LibBytes.sol";
