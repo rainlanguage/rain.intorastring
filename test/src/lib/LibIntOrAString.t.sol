@@ -4,7 +4,7 @@ pragma solidity =0.8.25;
 
 import {Test} from "forge-std/Test.sol";
 
-import {LibIntOrAString, IntOrAString, TRUTHY_HIGH_BIT} from "src/lib/LibIntOrAString.sol";
+import {LibIntOrAString, IntOrAString, LENGTH_MASK_V3, TRUTHY_BITS_V3} from "src/lib/LibIntOrAString.sol";
 import {LibBytes} from "rain.solmem/lib/LibBytes.sol";
 import {LibMemCpy} from "rain.solmem/lib/LibMemCpy.sol";
 import {LibIntOrAStringSlow} from "test/lib/LibIntOrAStringSlow.sol";
@@ -30,7 +30,7 @@ contract LibIntOrAStringTest is Test {
     function testRoundTripString(string memory s) external pure {
         vm.assume(bytes(s).length <= 31);
         putGarbageInUnallocatedMemory();
-        assertEq(LibIntOrAString.toString(LibIntOrAString.fromString2(s)), s);
+        assertEq(LibIntOrAString.toStringV3(LibIntOrAString.fromStringV3(s)), s);
     }
 
     /// All strings of any length should round trip but be truncated to their
@@ -43,20 +43,20 @@ contract LibIntOrAStringTest is Test {
         );
         LibBytes.truncate(truncated, truncated.length % 32);
 
-        assertEq(LibIntOrAString.toString(LibIntOrAString.fromString2(s)), string(truncated));
+        assertEq(LibIntOrAString.toStringV3(LibIntOrAString.fromStringV3(s)), string(truncated));
     }
 
-    /// Test directly that the length (leftmost byte) of an `IntOrAString` is
+    /// Test directly that the length (rightmost byte) of an `IntOrAString` is
     /// the length of the string it was created from modulo 32.
-    function testFromString2Length(string memory s) external pure {
+    function testFromStringV3Length(string memory s) external pure {
         putGarbageInUnallocatedMemory();
-        IntOrAString intOrAString = LibIntOrAString.fromString2(s);
-        assertEq((IntOrAString.unwrap(intOrAString) & ~TRUTHY_HIGH_BIT) >> 248, bytes(s).length % 32);
+        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+        assertEq(IntOrAString.unwrap(intOrAString) & LENGTH_MASK_V3, bytes(s).length % 32);
     }
 
     /// Test that building an `IntOrAString` from a string never includes any
     /// bytes in memory beyond the length of the string.
-    function testFromString2Garbage(string memory s, uint256 truncatedLength) external pure {
+    function testFromStringV3Garbage(string memory s, uint256 truncatedLength) external pure {
         putGarbageInUnallocatedMemory();
         vm.assume(bytes(s).length > 1);
         truncatedLength = bound(truncatedLength, 1, bytes(s).length - 1);
@@ -66,13 +66,13 @@ contract LibIntOrAStringTest is Test {
         assembly ("memory-safe") {
             mstore(s, truncatedLength)
         }
-        IntOrAString intOrAString = LibIntOrAString.fromString2(s);
-        assertEq(0, IntOrAString.unwrap(intOrAString) << ((truncatedLength + 1) * 8));
+        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+        assertEq(0, IntOrAString.unwrap(intOrAString) >> ((truncatedLength + 1) * 8));
     }
 
     /// Test that building an `IntOrAString` from a 0 length string never
     /// includes any bytes in memory beyond the length of the string.
-    function testFromString2ZeroLengthGarbage() external pure {
+    function testFromStringV3ZeroLengthGarbage() external pure {
         putGarbageInUnallocatedMemory();
         // Put a new string directly into scratch space with 0 length and all
         // ones for the adjacent data (that should not be included in output).
@@ -83,46 +83,39 @@ contract LibIntOrAStringTest is Test {
             mstore(0, 0)
             mstore(0x20, garbage)
         }
-        IntOrAString intOrAString = LibIntOrAString.fromString2(s);
-        assertEq(TRUTHY_HIGH_BIT, IntOrAString.unwrap(intOrAString));
+        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+        assertEq(TRUTHY_BITS_V3, IntOrAString.unwrap(intOrAString));
     }
 
     /// Directly test that all possible `IntOrAString` values can be converted to
     /// a string that is less than 32 bytes long.
     function testToString(IntOrAString intOrAString) external pure {
         putGarbageInUnallocatedMemory();
-        string memory s = LibIntOrAString.toString(intOrAString);
+        string memory s = LibIntOrAString.toStringV3(intOrAString);
         assertTrue(bytes(s).length < 0x20);
     }
 
-    /// Test `toString` against reference implementation.
+    /// Test `toStringV3` against reference implementation.
     function testToStringAgainstSlow(IntOrAString intOrAString) external pure {
         putGarbageInUnallocatedMemory();
-        string memory s = LibIntOrAString.toString(intOrAString);
-        string memory slow = LibIntOrAStringSlow.toStringSlow(intOrAString);
+        string memory s = LibIntOrAString.toStringV3(intOrAString);
+        string memory slow = LibIntOrAStringSlow.toStringV3Slow(intOrAString);
         assertEq(s, slow);
     }
 
-    /// Test `fromString2` against reference implementation.
-    function testFromString2AgainstSlow(string memory s) external pure {
+    /// Test `fromStringV3` against reference implementation.
+    function testFromStringV3AgainstSlow(string memory s) external pure {
         putGarbageInUnallocatedMemory();
-        IntOrAString intOrAString = LibIntOrAString.fromString2(s);
-        IntOrAString slow = LibIntOrAStringSlow.fromStringSlow(s);
+        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+        IntOrAString slow = LibIntOrAStringSlow.fromStringV3Slow(s);
         assertEq(IntOrAString.unwrap(intOrAString), IntOrAString.unwrap(slow));
     }
 
-    /// Test `fromString2` always returns truthy numeric values (never `0`).
-    function testFromString2Truthy(string memory s) external pure {
+    /// Test `fromStringV3` always returns truthy numeric values according to
+    /// float logic (i.e. != 0 when excluding the exponent bytes).
+    function testFromStringV3Truthy(string memory s) external pure {
         putGarbageInUnallocatedMemory();
-        IntOrAString intOrAString = LibIntOrAString.fromString2(s);
-        assertTrue(IntOrAString.unwrap(intOrAString) > 0);
-    }
-
-    /// Test `toString` returns an empty string for `0`. This is a special case
-    /// for backwards compatibility before the high bit was set to `1` for truthy
-    /// string enforcement.
-    function testToStringZero() external pure {
-        putGarbageInUnallocatedMemory();
-        assertEq(LibIntOrAString.toString(IntOrAString.wrap(0)), "");
+        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+        assertTrue(int224(uint224(IntOrAString.unwrap(intOrAString))) != 0);
     }
 }

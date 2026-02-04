@@ -2,32 +2,23 @@
 // SPDX-FileCopyrightText: Copyright (c) 2020 Rain Open Source Software Ltd
 pragma solidity ^0.8.25;
 
-/// @dev This masks out the top 3 bits of a uint256, leaving the lower 253 bits
-/// intact. This ensures the length never exceeds 31 bytes when converting to
-/// and from strings.
-uint256 constant INT_OR_A_STRING_MASK = ~(uint256(7) << 253);
+/// @dev Mask for the 5 bit length from V3 IntOrAString.
+/// 0x1f = 00011111
+uint256 constant LENGTH_MASK_V3 = 0x1f;
 
-/// @dev This masks out the low 3 bits of a uint256, leaving the upper 253 bits
-/// intact. This ensures the length never exceeds 31 bytes when converting to
-/// and from strings in V3+.
-uint256 constant INT_OR_A_STRING_LOW_MASK = ~uint256(7);
+/// @dev The truthy bits for V3 IntOrAString.
+/// 0xe0 = 11100000
+uint256 constant TRUTHY_BITS_V3 = 0xe0;
 
-/// @dev Set the high bit of the uint256 that represents an `IntOrAString` to
-/// ensure that strings are always interpreted as truthy, even if they are empty.
-uint256 constant TRUTHY_HIGH_BIT = 1 << 0xFF;
-
-/// Represents string data as an unsigned 32 byte integer. The highest 3 bits are
-/// ignored when interpreting the integer as a string length, naturally limiting
-/// the length of the string to 31 bytes. The lowest 31 bytes are the string
-/// data, with the leftmost byte being the first byte of the string.
-///
-/// If lengths greater than 31 bytes are attempted to be stored, the string
-/// conversion will exhibit the "weird" behaviour of truncating the output to
-/// modulo 32 of the length. If the caller wishes to avoid this behaviour, they
-/// should check and error on lengths greater than 31 bytes.
-///
-/// The high bit of an `IntOrString` is always set to `1`, to ensure that the
-/// integer is always truthy, even if the string is empty.
+/// Represents string data as an unsigned 32 byte integer.
+/// Can only store up to 31 bytes of string data, with the length encoded in the
+/// same word as the string data.
+/// The binary layout is implementation specific and has varied over time. To
+/// avoid compatibility issues the to/from string functions in this library
+/// are versioned and the layouts are documented in the respective functions.
+/// The reason this type isn't versioned is that it is intended to be used in
+/// contexts where the types are erased, ostensibly as Rainlang values which are
+/// all just `bytes32` by the time they reach the Rainlang stack.
 type IntOrAString is uint256;
 
 /// @title LibIntOrAString
@@ -39,58 +30,35 @@ type IntOrAString is uint256;
 /// available, such as a single storage slot or a single evm word on the stack or
 /// in memory. By not supporting fallbacks, we can provide a simpler and more
 /// efficient library, at the expense of requiring all strings to be shorter than
-/// 32 bytes. If strings are longer than 31 bytes, the library will truncate the
-/// output to modulo 32 of the length, which is probably not what you want, so
-/// you should try to avoid ever working with longer strings, e.g. by checking
-/// the length and erroring if it is too long, or otherwise providing the same
-/// guarantee.
+/// 32 bytes. If strings are longer than 31 bytes, the library behaviour is
+/// implementation specific, most likely it will truncate somehow, which is
+/// likely not what the caller intended. The caller is responsible for keeping
+/// strings within the 31 byte limit.
 library LibIntOrAString {
-    /// Converts an `IntOrAString` to a `string`, truncating the length to modulo
-    /// 32 of the leftmost byte. Much in the same way as converting `bytes` to
-    /// a string, there are NO checks or guarantees that the string is valid
-    /// according to some encoding such as UTF-8 or ASCII. If the `intOrAString`
-    /// contains garbage bytes beyond its string length, these will be copied
-    /// into the output string, also beyond its string length. For most use cases
-    /// this is fine, as strings aren't typically read beyond their length, but
-    /// it is something to be aware of if those garbage bytes are sensitive
-    /// somehow. The `fromString` function will always zero out these bytes
-    /// beyond the string length, so if the `intOrAString` was created from a
-    /// string using this library, there won't be any non-zero bytes beyond the
-    /// length.
-    function toString(IntOrAString intOrAString) internal pure returns (string memory) {
-        string memory s;
-        uint256 mask = INT_OR_A_STRING_MASK;
+    /// V3 version of toString, matching fromStringV3. This version puts the
+    /// length in the low 5 bits of the IntOrAString, which means reading the
+    /// length is a simple bitwise AND operation. This version also ensures that
+    /// all strings have the same truthiness in Rainlang float semantics, by
+    /// setting the 3 high bits of the length byte to 1, so that even an empty
+    /// string is considered truthy. If we set high bits of the main word then
+    /// some strings would be considered 0 with some non-zero exponent, which is
+    /// falsey for a float.
+    /// @param intOrAString The IntOrAString to convert to a string.
+    /// @return s The resulting string.
+    function toStringV3(IntOrAString intOrAString) internal pure returns (string memory s) {
+        uint256 lengthMask = LENGTH_MASK_V3;
         assembly ("memory-safe") {
-            // Point s to the free memory region.
-            s := mload(0x40)
-            // Allocate 64 bytes for the string, including the length field. As
-            // the input data is 32 bytes always, this is always enough.
-            mstore(0x40, add(s, 0x40))
-            // Zero out the region allocated for the string so no garbage data
-            // pre-allocation is present in the final string.
-            mstore(s, 0)
-            mstore(add(s, 0x20), 0)
-            // Copy the input data to the string. As the length is masked to 5
-            // bits, this is always safe in that the length of the output string
-            // won't exceed the length of the original input data.
-            mstore(add(s, 0x1F), and(intOrAString, mask))
-        }
-        return s;
-    }
-
-    function toString2(IntOrAString intOrAString) internal pure returns (string memory s) {
-        assembly ("memory-safe") {
-            // Point s to the free memory region.
-            s := mload(0x40)
-            // Allocate 64 bytes for the string, including the length field. As
-            // the input data is 32 bytes always, this is always enough.
-            mstore(0x40, add(s, 0x40))
-            mstore(add(s, 0x20), 0)
-
-            // Length is the low 5 bits of the intOrAString.
-            // 0x1f = 00011111
-            let length := and(intOrAString, 0x1f)
+            let length := and(intOrAString, lengthMask)
             let data := shr(8, intOrAString)
+
+            // Allocate memory for the string. If memory is currently aligned, it
+            // will remain aligned after allocating length + 32 bytes. If not,
+            // it will retain the same misalignment.
+            // Trailing bytes beyond the new string are zeroed.
+            s := mload(0x40)
+            mstore(0x40, add(s, 0x40))
+            // Ensure trailing bytes beyond the new string are zeroed.
+            mstore(add(s, 0x20), 0)
 
             mstore(add(s, length), data)
             // This will overwrite any garbage data that happened to be present
@@ -99,43 +67,26 @@ library LibIntOrAString {
         }
     }
 
-    /// Converts a `string` to an `IntOrAString`, truncating the length to modulo
-    /// 32 in the process. Any bytes beyond the length of the string will be
-    /// zeroed out, to ensure that no potentially sensitive data in memory is
-    /// copied into the `IntOrAString`. The high bit of the `IntOrAString` is
-    /// always set to `1`, to ensure that strings are always interpreted as
-    /// truthy, even if they are empty.
-    function fromString2(string memory s) internal pure returns (IntOrAString) {
-        IntOrAString intOrAString;
-        uint256 mask = INT_OR_A_STRING_MASK;
-        uint256 truthyHighBit = TRUTHY_HIGH_BIT;
+    /// Converts a `string` to an `IntOrAString`, truncating the length to 31
+    /// bytes in the process. The length and truthiness bits are stored in the
+    /// low byte of the resulting `IntOrAString`. Any bytes beyond the length of
+    /// the string will be zeroed out, to ensure that no potentially sensitive
+    /// data in memory is copied into the `IntOrAString`.
+    /// @param s The string to convert.
+    /// @return intOrAString The resulting IntOrAString.
+    function fromStringV3(string memory s) internal pure returns (IntOrAString intOrAString) {
+        uint256 lengthMask = LENGTH_MASK_V3;
+        uint256 truthyBits = TRUTHY_BITS_V3;
         assembly ("memory-safe") {
-            intOrAString := and(mload(add(s, 0x1F)), mask)
-            let garbageLength := sub(0x1F, byte(0, intOrAString))
-            //slither-disable-next-line incorrect-shift
-            let garbageMask := not(sub(shl(mul(garbageLength, 8), 1), 1))
-            intOrAString := or(and(intOrAString, garbageMask), truthyHighBit)
-        }
-        return intOrAString;
-    }
-
-    function fromString3(string memory s) internal pure returns (IntOrAString intOrAString) {
-        assembly ("memory-safe") {
-            // 5 bits for length caps length at 31 bytes.
-            let length := and(mload(s), 0x1f)
-            // Clear out some scratch space.
-            mstore(0, 0)
+            // 5 bits for length mods length by 32.
+            let length := and(mload(s), lengthMask)
+            // Use some scratch space.
+            mstore(0, or(truthyBits, length))
             // Copy the string data into scratch space, starting at byte 1.
             // The rightmost byte of the scratch word is left zeroed to store
             // the length and truthy bit.
-            mcopy(add(s, 0x20), sub(0x20, add(length, 1)), length)
-            // Construct the IntOrAString value.
-            // Scratch word will include up to 31 bytes of string data, with
-            // leading zeros if the string is shorter than 31 bytes, followed by
-            // 3 1 bits to ensure truthiness consistency in a float based stack,
-            // then 5 bits of length.
-            // 0xE0 = 11100000
-            intOrAString := or(or(mload(0), 0xE0), length)
+            mcopy(sub(0x20, add(length, 1)), add(s, 0x20), length)
+            intOrAString := mload(0)
         }
     }
 }
