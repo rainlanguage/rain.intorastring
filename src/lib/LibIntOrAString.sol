@@ -7,6 +7,11 @@ pragma solidity ^0.8.25;
 /// and from strings.
 uint256 constant INT_OR_A_STRING_MASK = ~(uint256(7) << 253);
 
+/// @dev This masks out the low 3 bits of a uint256, leaving the upper 253 bits
+/// intact. This ensures the length never exceeds 31 bytes when converting to
+/// and from strings in V3+.
+uint256 constant INT_OR_A_STRING_LOW_MASK = ~uint256(7);
+
 /// @dev Set the high bit of the uint256 that represents an `IntOrAString` to
 /// ensure that strings are always interpreted as truthy, even if they are empty.
 uint256 constant TRUTHY_HIGH_BIT = 1 << 0xFF;
@@ -73,6 +78,27 @@ library LibIntOrAString {
         return s;
     }
 
+    function toString2(IntOrAString intOrAString) internal pure returns (string memory s) {
+        assembly ("memory-safe") {
+            // Point s to the free memory region.
+            s := mload(0x40)
+            // Allocate 64 bytes for the string, including the length field. As
+            // the input data is 32 bytes always, this is always enough.
+            mstore(0x40, add(s, 0x40))
+            mstore(add(s, 0x20), 0)
+
+            // Length is the low 5 bits of the intOrAString.
+            // 0x1f = 00011111
+            let length := and(intOrAString, 0x1f)
+            let data := shr(8, intOrAString)
+
+            mstore(add(s, length), data)
+            // This will overwrite any garbage data that happened to be present
+            // in the high bytes beyond `length` bytes of data in the input.
+            mstore(s, length)
+        }
+    }
+
     /// Converts a `string` to an `IntOrAString`, truncating the length to modulo
     /// 32 in the process. Any bytes beyond the length of the string will be
     /// zeroed out, to ensure that no potentially sensitive data in memory is
@@ -91,5 +117,25 @@ library LibIntOrAString {
             intOrAString := or(and(intOrAString, garbageMask), truthyHighBit)
         }
         return intOrAString;
+    }
+
+    function fromString3(string memory s) internal pure returns (IntOrAString intOrAString) {
+        assembly ("memory-safe") {
+            // 5 bits for length caps length at 31 bytes.
+            let length := and(mload(s), 0x1f)
+            // Clear out some scratch space.
+            mstore(0, 0)
+            // Copy the string data into scratch space, starting at byte 1.
+            // The rightmost byte of the scratch word is left zeroed to store
+            // the length and truthy bit.
+            mcopy(add(s, 0x20), sub(0x20, add(length, 1)), length)
+            // Construct the IntOrAString value.
+            // Scratch word will include up to 31 bytes of string data, with
+            // leading zeros if the string is shorter than 31 bytes, followed by
+            // 3 1 bits to ensure truthiness consistency in a float based stack,
+            // then 5 bits of length.
+            // 0xE0 = 11100000
+            intOrAString := or(or(mload(0), 0xE0), length)
+        }
     }
 }
