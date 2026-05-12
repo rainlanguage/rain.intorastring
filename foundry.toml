@@ -1,7 +1,7 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["lib"]
+libs = ["dependencies"]
 
 solc = "0.8.25"
 evm_version = "cancun"
@@ -17,3 +17,10 @@ cbor_metadata = false
 
 [fuzz]
 runs = 2048
+
+[dependencies]
+forge-std = "1.16.1"
+"rain-solmem" = "0.1.3"
+
+[soldeer]
+recursive_deps = false

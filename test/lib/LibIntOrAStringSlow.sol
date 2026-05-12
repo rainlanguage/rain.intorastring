@@ -3,7 +3,7 @@
 pragma solidity =0.8.25;
 
 import {IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {LibBytes} from "rain.solmem/lib/LibBytes.sol";
+import {LibBytes} from "rain-solmem-0.1.3/src/lib/LibBytes.sol";
 
 library LibIntOrAStringSlow {
     function toStringV3Slow(IntOrAString intOrAString) internal pure returns (string memory) {
