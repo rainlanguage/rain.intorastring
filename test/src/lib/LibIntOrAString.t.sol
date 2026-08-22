@@ -5,8 +5,8 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString, LENGTH_MASK_V3, TRUTHY_BITS_V3} from "src/lib/LibIntOrAString.sol";
-import {LibBytes} from "rain-solmem-0.1.3/src/lib/LibBytes.sol";
-import {LibMemCpy} from "rain-solmem-0.1.3/src/lib/LibMemCpy.sol";
+import {LibBytes} from "rain-solmem-0.1.26/src/lib/LibBytes.sol";
+import {LibMemCpy} from "rain-solmem-0.1.26/src/lib/LibMemCpy.sol";
 import {LibIntOrAStringSlow} from "test/lib/LibIntOrAStringSlow.sol";
 
 contract LibIntOrAStringTest is Test {
