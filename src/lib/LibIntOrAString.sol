@@ -46,10 +46,7 @@ library LibIntOrAString {
             let length := and(intOrAString, lengthMask)
             let data := shr(8, intOrAString)
 
-            // Allocate memory for the string. If memory is currently aligned, it
-            // will remain aligned after allocating length + 32 bytes. If not,
-            // it will retain the same misalignment.
-            // Trailing bytes beyond the new string are zeroed.
+            // Allocate two words: the length word and the data word.
             s := mload(0x40)
             mstore(0x40, add(s, 0x40))
             // Ensure trailing bytes beyond the new string are zeroed.
