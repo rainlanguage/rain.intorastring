@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-09-06T03:20:35Z",
+    "commit": "53f9abe65d590a0601a58f94c8c10cc5019d70e1",
+    "testsAfterCommit": "163f9416c0a91b3565a1297213e4eeaf384c4ace",
+    "publishedTag": "sol-v0.1.1",
+    "commitsAheadOfTag": 0,
+    "scope": "whole repo",
+    "tool": "adversarial-mutation-test",
+    "skillVersion": "0.35.0",
+    "summary": {
+      "units": 2,
+      "behaviours": 28,
+      "mutants": 28,
+      "killedBefore": 26,
+      "survivedBefore": 1,
+      "killedAfter": 28,
+      "candidates": 2,
+      "confirmed": 2,
+      "testsBefore": 9,
+      "testsAfter": 12,
+      "filed": ["#25", "#26"],
+      "coveragePrs": ["#27"]
+    }
+  }
+]
