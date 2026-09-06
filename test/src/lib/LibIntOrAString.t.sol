@@ -67,7 +67,7 @@ contract LibIntOrAStringTest is Test {
             mstore(s, truncatedLength)
         }
         IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
-        assertEq(0, IntOrAString.unwrap(intOrAString) >> ((truncatedLength + 1) * 8));
+        assertEq(0, IntOrAString.unwrap(intOrAString) >> (((truncatedLength % 32) + 1) * 8));
     }
 
     /// Test that building an `IntOrAString` from a 0 length string never
@@ -117,5 +117,53 @@ contract LibIntOrAStringTest is Test {
         putGarbageInUnallocatedMemory();
         IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
         assertTrue(int224(uint224(IntOrAString.unwrap(intOrAString))) != 0);
+    }
+
+    /// Every byte of the allocated data word beyond the string length is zero,
+    /// whatever free memory held beforehand and whatever the high bytes of the
+    /// input were.
+    function testToStringV3TrailingBytesZeroed(IntOrAString intOrAString) external pure {
+        putGarbageInUnallocatedMemory();
+        string memory s = LibIntOrAString.toStringV3(intOrAString);
+        uint256 length = bytes(s).length;
+        uint256 dataWord;
+        assembly ("memory-safe") {
+            dataWord := mload(add(s, 0x20))
+        }
+        assertEq(dataWord << (length * 8), 0);
+    }
+
+    /// Layout as documented: string bytes sit immediately above the low byte,
+    /// whose low 5 bits are the length and whose high 3 bits are set.
+    function testFromStringV3KnownAnswers() external pure {
+        putGarbageInUnallocatedMemory();
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("")), 0xe0);
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("a")), 0x61e1);
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("foo")), 0x666f6fe3);
+        assertEq(
+            IntOrAString.unwrap(LibIntOrAString.fromStringV3("abcdefghijklmnopqrstuvwxyz01234")),
+            0x6162636465666768696a6b6c6d6e6f707172737475767778797a3031323334ff
+        );
+        // 32 bytes wraps to length 0 with no data.
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("abcdefghijklmnopqrstuvwxyz012345")), 0xe0);
+        // 33 bytes wraps to length 1, keeping only the first byte.
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("abcdefghijklmnopqrstuvwxyz0123456")), 0x61e1);
+    }
+
+    /// Only the low 5 bits of the length byte and the bytes the length covers
+    /// are read; every other bit of the input is ignored.
+    function testToStringV3KnownAnswers() external pure {
+        putGarbageInUnallocatedMemory();
+        assertEq(LibIntOrAString.toStringV3(IntOrAString.wrap(0)), "");
+        assertEq(LibIntOrAString.toStringV3(IntOrAString.wrap(0xe0)), "");
+        assertEq(LibIntOrAString.toStringV3(IntOrAString.wrap(0x666f6fe3)), "foo");
+        assertEq(LibIntOrAString.toStringV3(IntOrAString.wrap(0x666f6f03)), "foo");
+        assertEq(LibIntOrAString.toStringV3(IntOrAString.wrap((type(uint256).max << 32) | 0x666f6fe3)), "foo");
+        assertEq(
+            LibIntOrAString.toStringV3(
+                IntOrAString.wrap(0x6162636465666768696a6b6c6d6e6f707172737475767778797a3031323334ff)
+            ),
+            "abcdefghijklmnopqrstuvwxyz01234"
+        );
     }
 }
