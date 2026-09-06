@@ -1,7 +1,3 @@
-[package]
-name = "rain-intorastring"
-version = "0.1.1"
-
 [profile.default]
 src = "src"
 out = "out"
