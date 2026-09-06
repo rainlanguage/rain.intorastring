@@ -37,12 +37,7 @@ type IntOrAString is uint256;
 library LibIntOrAString {
     /// V3 version of toString, matching fromStringV3. This version puts the
     /// length in the low 5 bits of the IntOrAString, which means reading the
-    /// length is a simple bitwise AND operation. This version also ensures that
-    /// all strings have the same truthiness in Rainlang float semantics, by
-    /// setting the 3 high bits of the length byte to 1, so that even an empty
-    /// string is considered truthy. If we set high bits of the main word then
-    /// some strings would be considered 0 with some non-zero exponent, which is
-    /// falsey for a float.
+    /// length is a simple bitwise AND operation.
     /// @param intOrAString The IntOrAString to convert to a string.
     /// @return s The resulting string.
     function toStringV3(IntOrAString intOrAString) internal pure returns (string memory s) {
@@ -51,10 +46,7 @@ library LibIntOrAString {
             let length := and(intOrAString, lengthMask)
             let data := shr(8, intOrAString)
 
-            // Allocate memory for the string. If memory is currently aligned, it
-            // will remain aligned after allocating length + 32 bytes. If not,
-            // it will retain the same misalignment.
-            // Trailing bytes beyond the new string are zeroed.
+            // Allocate two words: the length word and the data word.
             s := mload(0x40)
             mstore(0x40, add(s, 0x40))
             // Ensure trailing bytes beyond the new string are zeroed.
@@ -67,11 +59,16 @@ library LibIntOrAString {
         }
     }
 
-    /// Converts a `string` to an `IntOrAString`, truncating the length to 31
-    /// bytes in the process. The length and truthiness bits are stored in the
-    /// low byte of the resulting `IntOrAString`. Any bytes beyond the length of
+    /// Converts a `string` to an `IntOrAString`, taking the length modulo 32
+    /// in the process. The length and truthiness bits are stored in the low
+    /// byte of the resulting `IntOrAString`. Any bytes beyond the length of
     /// the string will be zeroed out, to ensure that no potentially sensitive
-    /// data in memory is copied into the `IntOrAString`.
+    /// data in memory is copied into the `IntOrAString`. This version also
+    /// ensures that all strings have the same truthiness in Rainlang float
+    /// semantics, by setting the 3 high bits of the length byte to 1, so that
+    /// even an empty string is considered truthy. If we set high bits of the
+    /// main word then some strings would be considered 0 with some non-zero
+    /// exponent, which is falsey for a float.
     /// @param s The string to convert.
     /// @return intOrAString The resulting IntOrAString.
     function fromStringV3(string memory s) internal pure returns (IntOrAString intOrAString) {
