@@ -190,10 +190,7 @@ contract LibIntOrAStringTest is Test {
     }
 
     /// Uniform words are almost never V3 strings, so bias the fuzz to near encodings.
-    function testIsStringV3EqualsRoundTripNearEncodings(uint256 data, uint256 dataLength, uint8 lowByte)
-        external
-        pure
-    {
+    function testIsStringV3EqualsRoundTripNearEncodings(uint256 data, uint256 dataLength, uint8 lowByte) external pure {
         dataLength = bound(dataLength, 0, 31);
         putGarbageInUnallocatedMemory();
         IntOrAString intOrAString = IntOrAString.wrap(((data >> ((32 - dataLength) * 8)) << 8) | lowByte);
@@ -214,8 +211,9 @@ contract LibIntOrAStringTest is Test {
     }
 
     function testIsStringV3FalseWhenAnyTruthyBitClear() external pure {
-        uint256[4] memory encodings =
-            [uint256(0xe0), 0x41e1, 0x6162636465666768696a6b6c6d6e6f707172737475767778797a3031323334ff, type(uint256).max];
+        uint256[4] memory encodings = [
+            uint256(0xe0), 0x41e1, 0x6162636465666768696a6b6c6d6e6f707172737475767778797a3031323334ff, type(uint256).max
+        ];
         for (uint256 i = 0; i < encodings.length; i++) {
             checkIsStringV3(encodings[i], true);
             for (uint256 bit = 0x20; bit <= 0x80; bit <<= 1) {
