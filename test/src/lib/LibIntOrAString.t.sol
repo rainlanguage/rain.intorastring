@@ -166,4 +166,88 @@ contract LibIntOrAStringTest is Test {
             "abcdefghijklmnopqrstuvwxyz01234"
         );
     }
+
+    function roundTripsV3(IntOrAString intOrAString) internal pure returns (bool) {
+        return IntOrAString.unwrap(LibIntOrAString.fromStringV3(LibIntOrAString.toStringV3(intOrAString)))
+            == IntOrAString.unwrap(intOrAString);
+    }
+
+    function checkIsStringV3(uint256 value, bool expected) internal pure {
+        IntOrAString intOrAString = IntOrAString.wrap(value);
+        assertEq(roundTripsV3(intOrAString), expected);
+        assertEq(LibIntOrAString.isStringV3(intOrAString), expected);
+    }
+
+    function testIsStringV3TrueForFromStringV3Output(string memory s) external pure {
+        vm.assume(bytes(s).length <= 31);
+        putGarbageInUnallocatedMemory();
+        assertTrue(LibIntOrAString.isStringV3(LibIntOrAString.fromStringV3(s)));
+    }
+
+    function testIsStringV3EqualsRoundTrip(IntOrAString intOrAString) external pure {
+        putGarbageInUnallocatedMemory();
+        assertEq(LibIntOrAString.isStringV3(intOrAString), roundTripsV3(intOrAString));
+    }
+
+    /// Uniform words are almost never V3 strings, so bias the fuzz to near encodings.
+    function testIsStringV3EqualsRoundTripNearEncodings(uint256 data, uint256 dataLength, uint8 lowByte)
+        external
+        pure
+    {
+        dataLength = bound(dataLength, 0, 31);
+        putGarbageInUnallocatedMemory();
+        IntOrAString intOrAString = IntOrAString.wrap(((data >> ((32 - dataLength) * 8)) << 8) | lowByte);
+        assertEq(LibIntOrAString.isStringV3(intOrAString), roundTripsV3(intOrAString));
+    }
+
+    function testIsStringV3TrueForIntegerEqualToStringEncoding() external pure {
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("A")), 16865);
+        checkIsStringV3(16865, true);
+        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("")), 224);
+        checkIsStringV3(224, true);
+        checkIsStringV3(0x666f6fe3, true);
+    }
+
+    function testIsStringV3FalseForZeroAndOne() external pure {
+        checkIsStringV3(0, false);
+        checkIsStringV3(1, false);
+    }
+
+    function testIsStringV3FalseWhenAnyTruthyBitClear() external pure {
+        uint256[4] memory encodings =
+            [uint256(0xe0), 0x41e1, 0x6162636465666768696a6b6c6d6e6f707172737475767778797a3031323334ff, type(uint256).max];
+        for (uint256 i = 0; i < encodings.length; i++) {
+            checkIsStringV3(encodings[i], true);
+            for (uint256 bit = 0x20; bit <= 0x80; bit <<= 1) {
+                checkIsStringV3(encodings[i] & ~bit, false);
+            }
+            checkIsStringV3(encodings[i] & ~TRUTHY_BITS_V3, false);
+        }
+    }
+
+    function testIsStringV3DataBoundaryIsLength() external pure {
+        for (uint256 length = 0; length < 31; length++) {
+            uint256 lowByte = TRUTHY_BITS_V3 | length;
+            uint256 fullData = ((1 << (length * 8)) - 1) << 8;
+            checkIsStringV3(lowByte, true);
+            checkIsStringV3(fullData | lowByte, true);
+            checkIsStringV3((1 << ((length + 1) * 8)) | lowByte, false);
+            checkIsStringV3((1 << ((length + 1) * 8)) | fullData | lowByte, false);
+            checkIsStringV3((1 << 255) | lowByte, false);
+        }
+    }
+
+    /// Length 31 covers every byte above the low byte, so no high bit is stray.
+    function testIsStringV3TrueForLength31WithAnyHighBits() external pure {
+        checkIsStringV3(0xff, true);
+        checkIsStringV3(0x01ff, true);
+        checkIsStringV3((1 << 248) | 0xff, true);
+        checkIsStringV3((1 << 255) | 0xff, true);
+        checkIsStringV3(type(uint256).max, true);
+    }
+
+    function testIsStringV3TrueForEveryLength31Word(uint256 data) external pure {
+        putGarbageInUnallocatedMemory();
+        checkIsStringV3((data << 8) | 0xff, true);
+    }
 }
