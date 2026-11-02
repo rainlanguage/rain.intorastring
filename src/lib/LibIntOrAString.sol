@@ -86,4 +86,14 @@ library LibIntOrAString {
             intOrAString := mload(0)
         }
     }
+
+    /// True iff `intOrAString` is exactly what `fromStringV3` produces for some
+    /// string of at most 31 bytes, i.e. it round trips through `toStringV3`.
+    /// @param intOrAString The IntOrAString to check.
+    /// @return True if `intOrAString` is a V3 string.
+    function isStringV3(IntOrAString intOrAString) internal pure returns (bool) {
+        uint256 value = IntOrAString.unwrap(intOrAString);
+        uint256 length = value & LENGTH_MASK_V3;
+        return (value & TRUTHY_BITS_V3) == TRUTHY_BITS_V3 && (value >> ((length + 1) * 8)) == 0;
+    }
 }
