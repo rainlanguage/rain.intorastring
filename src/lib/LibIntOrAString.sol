@@ -86,4 +86,90 @@ library LibIntOrAString {
             intOrAString := mload(0)
         }
     }
+
+    /// V3 byte length of an `IntOrAString`, read from the low 5 bits.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The byte length of the string.
+    function countV3(IntOrAString intOrAString) internal pure returns (uint256) {
+        return IntOrAString.unwrap(intOrAString) & LENGTH_MASK_V3;
+    }
+
+    /// V3 prefix check. Bytes above the length of either input are ignored.
+    /// @param intOrAString The V3 `IntOrAString` to check.
+    /// @param prefix The V3 `IntOrAString` prefix.
+    /// @return True if `intOrAString` starts with `prefix`.
+    function startsWithV3(IntOrAString intOrAString, IntOrAString prefix) internal pure returns (bool) {
+        uint256 lengthMask = LENGTH_MASK_V3;
+        bool result;
+        assembly ("memory-safe") {
+            let sLength := and(intOrAString, lengthMask)
+            let pLength := and(prefix, lengthMask)
+            let shift := sub(256, mul(8, pLength))
+            let sLeft := shl(sub(256, mul(8, sLength)), shr(8, intOrAString))
+            let pLeft := shl(shift, shr(8, prefix))
+            result := and(iszero(gt(pLength, sLength)), eq(shr(shift, sLeft), shr(shift, pLeft)))
+        }
+        return result;
+    }
+
+    /// V3 suffix check. Bytes above the length of either input are ignored.
+    /// @param intOrAString The V3 `IntOrAString` to check.
+    /// @param suffix The V3 `IntOrAString` suffix.
+    /// @return True if `intOrAString` ends with `suffix`.
+    function endsWithV3(IntOrAString intOrAString, IntOrAString suffix) internal pure returns (bool) {
+        uint256 lengthMask = LENGTH_MASK_V3;
+        bool result;
+        assembly ("memory-safe") {
+            let sLength := and(intOrAString, lengthMask)
+            let xLength := and(suffix, lengthMask)
+            let mask := sub(shl(mul(8, xLength), 1), 1)
+            result := and(iszero(gt(xLength, sLength)), eq(and(shr(8, intOrAString), mask), and(shr(8, suffix), mask)))
+        }
+        return result;
+    }
+
+    /// V3 `intOrAString` without `prefix`, or `intOrAString` unchanged when it
+    /// does not start with `prefix`. The result is a canonical V3
+    /// `IntOrAString`, as `fromStringV3` would produce.
+    /// @param intOrAString The V3 `IntOrAString` to strip.
+    /// @param prefix The V3 `IntOrAString` prefix.
+    /// @return The stripped V3 `IntOrAString`.
+    function stripPrefixV3(IntOrAString intOrAString, IntOrAString prefix) internal pure returns (IntOrAString) {
+        uint256 lengthMask = LENGTH_MASK_V3;
+        uint256 truthyBits = TRUTHY_BITS_V3;
+        IntOrAString result;
+        assembly ("memory-safe") {
+            let sLength := and(intOrAString, lengthMask)
+            let pLength := and(prefix, lengthMask)
+            let shift := sub(256, mul(8, pLength))
+            let sLeft := shl(sub(256, mul(8, sLength)), shr(8, intOrAString))
+            let pLeft := shl(shift, shr(8, prefix))
+            let stripped := mul(and(iszero(gt(pLength, sLength)), eq(shr(shift, sLeft), shr(shift, pLeft))), pLength)
+            let length := sub(sLength, stripped)
+            result := or(shl(8, shr(sub(256, mul(8, length)), shl(mul(8, stripped), sLeft))), or(truthyBits, length))
+        }
+        return result;
+    }
+
+    /// V3 `intOrAString` without `suffix`, or `intOrAString` unchanged when it
+    /// does not end with `suffix`. The result is a canonical V3
+    /// `IntOrAString`, as `fromStringV3` would produce.
+    /// @param intOrAString The V3 `IntOrAString` to strip.
+    /// @param suffix The V3 `IntOrAString` suffix.
+    /// @return The stripped V3 `IntOrAString`.
+    function stripSuffixV3(IntOrAString intOrAString, IntOrAString suffix) internal pure returns (IntOrAString) {
+        uint256 lengthMask = LENGTH_MASK_V3;
+        uint256 truthyBits = TRUTHY_BITS_V3;
+        IntOrAString result;
+        assembly ("memory-safe") {
+            let sLength := and(intOrAString, lengthMask)
+            let xLength := and(suffix, lengthMask)
+            let sData := and(shr(8, intOrAString), sub(shl(mul(8, sLength), 1), 1))
+            let mask := sub(shl(mul(8, xLength), 1), 1)
+            let stripped :=
+                mul(and(iszero(gt(xLength, sLength)), eq(and(sData, mask), and(shr(8, suffix), mask))), xLength)
+            result := or(shl(8, shr(mul(8, stripped), sData)), or(truthyBits, sub(sLength, stripped)))
+        }
+        return result;
+    }
 }
