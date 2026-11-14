@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2020 Rain Open Source Software Ltd
 pragma solidity ^0.8.25;
 
+import {IntOrAStringTooLong, IntOrAStringSubsOutOfRange} from "../error/ErrIntOrAString.sol";
+
 /// @dev Mask for the 5 bit length from V3 IntOrAString.
 /// 0x1f = 00011111
 uint256 constant LENGTH_MASK_V3 = 0x1f;
@@ -171,5 +173,112 @@ library LibIntOrAString {
             result := or(shl(8, shr(mul(8, stripped), sData)), or(truthyBits, sub(sLength, stripped)))
         }
         return result;
+    }
+
+    /// V3 substring check, as Clojure `clojure.string/includes?`. The empty
+    /// string is included in every string.
+    /// @param intOrAString The V3 `IntOrAString` to search.
+    /// @param needle The V3 `IntOrAString` to find.
+    /// @return True if `needle` occurs in `intOrAString`.
+    function includesV3(IntOrAString intOrAString, IntOrAString needle) internal pure returns (bool) {
+        uint256 sLength = countV3(intOrAString);
+        uint256 nLength = countV3(needle);
+        if (nLength > sLength) {
+            return false;
+        }
+        uint256 mask = (1 << (8 * nLength)) - 1;
+        uint256 sData = IntOrAString.unwrap(intOrAString) >> 8;
+        uint256 nData = (IntOrAString.unwrap(needle) >> 8) & mask;
+        for (uint256 i = 0; i <= sLength - nLength; i++) {
+            if ((sData >> (8 * i)) & mask == nData) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// V3 substring of bytes `[start, end)`, as Clojure `subs`.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @param start The first byte index, inclusive.
+    /// @param end The last byte index, exclusive.
+    /// @return The canonical V3 substring.
+    function subsV3(IntOrAString intOrAString, uint256 start, uint256 end) internal pure returns (IntOrAString) {
+        uint256 length = countV3(intOrAString);
+        if (start > end || end > length) {
+            revert IntOrAStringSubsOutOfRange(start, end, length);
+        }
+        return packV3(
+            (IntOrAString.unwrap(intOrAString) >> (8 * (1 + length - end))) & ((1 << (8 * (end - start))) - 1),
+            end - start
+        );
+    }
+
+    /// V3 `intOrAString` without leading whitespace, as Clojure
+    /// `clojure.string/triml` (Java `Character/isWhitespace`).
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 trimmed string.
+    function trimlV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        uint256 length = countV3(intOrAString);
+        uint256 start = 0;
+        while (start < length && isWhitespace(byteAtV3(intOrAString, length, start))) {
+            start++;
+        }
+        return subsV3(intOrAString, start, length);
+    }
+
+    /// V3 `intOrAString` without trailing whitespace, as Clojure
+    /// `clojure.string/trimr` (Java `Character/isWhitespace`).
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 trimmed string.
+    function trimrV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        uint256 length = countV3(intOrAString);
+        uint256 end = length;
+        while (end > 0 && isWhitespace(byteAtV3(intOrAString, length, end - 1))) {
+            end--;
+        }
+        return subsV3(intOrAString, 0, end);
+    }
+
+    /// V3 `intOrAString` without leading or trailing whitespace, as Clojure
+    /// `clojure.string/trim`.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 trimmed string.
+    function trimV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        return trimlV3(trimrV3(intOrAString));
+    }
+
+    /// V3 concatenation of `a` then `b`, as Clojure `str`. Reverts with
+    /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// @param a The V3 `IntOrAString` prefix.
+    /// @param b The V3 `IntOrAString` suffix.
+    /// @return The canonical V3 concatenation.
+    function concatV3(IntOrAString a, IntOrAString b) internal pure returns (IntOrAString) {
+        uint256 aLength = countV3(a);
+        uint256 bLength = countV3(b);
+        return packV3((dataV3(a, aLength) << (8 * bLength)) | dataV3(b, bLength), aLength + bLength);
+    }
+
+    /// Byte `i` of a V3 `IntOrAString` of byte length `length`.
+    function byteAtV3(IntOrAString intOrAString, uint256 length, uint256 i) private pure returns (uint256) {
+        return (IntOrAString.unwrap(intOrAString) >> (8 * (length - i))) & 0xff;
+    }
+
+    /// The low `length` bytes of string data of a V3 `IntOrAString`.
+    function dataV3(IntOrAString intOrAString, uint256 length) private pure returns (uint256) {
+        return (IntOrAString.unwrap(intOrAString) >> 8) & ((1 << (8 * length)) - 1);
+    }
+
+    /// Canonical V3 `IntOrAString` from right aligned `data` of `length`
+    /// bytes. Reverts with `IntOrAStringTooLong` above 31 bytes.
+    function packV3(uint256 data, uint256 length) private pure returns (IntOrAString) {
+        if (length > LENGTH_MASK_V3) {
+            revert IntOrAStringTooLong(length);
+        }
+        return IntOrAString.wrap((data << 8) | TRUTHY_BITS_V3 | length);
+    }
+
+    /// Java `Character/isWhitespace` over ASCII.
+    function isWhitespace(uint256 c) private pure returns (bool) {
+        return c == 0x20 || (c >= 0x09 && c <= 0x0d) || (c >= 0x1c && c <= 0x1f);
     }
 }
