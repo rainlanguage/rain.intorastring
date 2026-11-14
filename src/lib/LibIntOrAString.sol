@@ -12,6 +12,28 @@ uint256 constant LENGTH_MASK_V3 = 0x1f;
 /// 0xe0 = 11100000
 uint256 constant TRUTHY_BITS_V3 = 0xe0;
 
+/// @dev Case mode: every byte lower case.
+uint256 constant CASE_LOWER = 0;
+/// @dev Case mode: every byte upper case.
+uint256 constant CASE_UPPER = 1;
+/// @dev Case mode: first byte upper case, the rest lower case.
+uint256 constant CASE_CAPITALIZE = 2;
+
+/// @dev camel-snake-kebab character classes.
+uint256 constant CHAR_OTHER = 0;
+uint256 constant CHAR_LOWER = 1;
+uint256 constant CHAR_UPPER = 2;
+uint256 constant CHAR_NUMBER = 3;
+uint256 constant CHAR_WHITESPACE = 4;
+uint256 constant CHAR_NONE = 5;
+
+/// @dev Output accumulated by a case conversion.
+struct CaseOutput {
+    uint256 data;
+    uint256 length;
+    uint256 words;
+}
+
 /// Represents string data as an unsigned 32 byte integer.
 /// Can only store up to 31 bytes of string data, with the length encoded in the
 /// same word as the string data.
@@ -256,6 +278,156 @@ library LibIntOrAString {
         uint256 aLength = countV3(a);
         uint256 bLength = countV3(b);
         return packV3((dataV3(a, aLength) << (8 * bLength)) | dataV3(b, bLength), aLength + bLength);
+    }
+
+    /// V3 ASCII lower case, as Clojure `clojure.string/lower-case`.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 lower case string.
+    function lowerCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        uint256 length = countV3(intOrAString);
+        uint256 data = 0;
+        for (uint256 i = 0; i < length; i++) {
+            data = (data << 8) | applyCase(byteAtV3(intOrAString, length, i), CASE_LOWER, false);
+        }
+        return packV3(data, length);
+    }
+
+    /// V3 ASCII upper case, as Clojure `clojure.string/upper-case`.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 upper case string.
+    function upperCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        uint256 length = countV3(intOrAString);
+        uint256 data = 0;
+        for (uint256 i = 0; i < length; i++) {
+            data = (data << 8) | applyCase(byteAtV3(intOrAString, length, i), CASE_UPPER, false);
+        }
+        return packV3(data, length);
+    }
+
+    /// V3 camelCase, as camel-snake-kebab `->camelCase`.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 camelCase string.
+    function camelCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        return convertCaseV3(intOrAString, CASE_LOWER, CASE_CAPITALIZE, 0);
+    }
+
+    /// V3 PascalCase, as camel-snake-kebab `->PascalCase`.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 PascalCase string.
+    function pascalCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        return convertCaseV3(intOrAString, CASE_CAPITALIZE, CASE_CAPITALIZE, 0);
+    }
+
+    /// V3 snake_case, as camel-snake-kebab `->snake_case`. Reverts with
+    /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 snake_case string.
+    function snakeCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        return convertCaseV3(intOrAString, CASE_LOWER, CASE_LOWER, 0x5f);
+    }
+
+    /// V3 SCREAMING_SNAKE_CASE, as camel-snake-kebab `->SCREAMING_SNAKE_CASE`.
+    /// Reverts with `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 SCREAMING_SNAKE_CASE string.
+    function screamingSnakeCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        return convertCaseV3(intOrAString, CASE_UPPER, CASE_UPPER, 0x5f);
+    }
+
+    /// V3 kebab-case, as camel-snake-kebab `->kebab-case`. Reverts with
+    /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// @param intOrAString The V3 `IntOrAString`.
+    /// @return The canonical V3 kebab-case string.
+    function kebabCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
+        return convertCaseV3(intOrAString, CASE_LOWER, CASE_LOWER, 0x2d);
+    }
+
+    /// camel-snake-kebab `convert-case` over its `generic-split` word
+    /// boundaries: whitespace, `-` and `_` separate words, and a word ends
+    /// before an upper case byte that follows a non upper case byte, before a
+    /// digit that follows a non digit, and before the last upper case byte of
+    /// a capital run followed by a lower case byte.
+    function convertCaseV3(IntOrAString intOrAString, uint256 firstMode, uint256 restMode, uint256 separator)
+        private
+        pure
+        returns (IntOrAString)
+    {
+        uint256 length = countV3(intOrAString);
+        CaseOutput memory out = CaseOutput(0, 0, 0);
+        uint256 style = firstMode | (restMode << 8) | (separator << 16);
+        uint256 start = 0;
+        for (uint256 current = 0; current < length; current++) {
+            uint256 a = classifyChar(intOrAString, length, current);
+            if (a == CHAR_WHITESPACE) {
+                appendWord(intOrAString, length, start, current, style, out);
+                start = current + 1;
+                continue;
+            }
+            uint256 b = classifyChar(intOrAString, length, current + 1);
+            if (
+                (a != CHAR_UPPER && b == CHAR_UPPER) || (a != CHAR_NUMBER && b == CHAR_NUMBER)
+                    || (a == CHAR_UPPER && b == CHAR_UPPER && classifyChar(intOrAString, length, current + 2) == CHAR_LOWER)
+            ) {
+                appendWord(intOrAString, length, start, current + 1, style, out);
+                start = current + 1;
+            }
+        }
+        appendWord(intOrAString, length, start, length, style, out);
+        return packV3(out.data, out.length);
+    }
+
+    /// Appends bytes `[start, end)` as one word, when non empty.
+    function appendWord(
+        IntOrAString intOrAString,
+        uint256 length,
+        uint256 start,
+        uint256 end,
+        uint256 style,
+        CaseOutput memory out
+    ) private pure {
+        if (end <= start) {
+            return;
+        }
+        uint256 separator = style >> 16;
+        if (out.words > 0 && separator != 0) {
+            out.data = (out.data << 8) | separator;
+            out.length++;
+        }
+        uint256 mode = out.words == 0 ? style & 0xff : (style >> 8) & 0xff;
+        for (uint256 i = start; i < end; i++) {
+            out.data = (out.data << 8) | applyCase(byteAtV3(intOrAString, length, i), mode, i == start);
+            out.length++;
+        }
+        out.words++;
+    }
+
+    /// camel-snake-kebab class of byte `i`, or `CHAR_NONE` past the end.
+    function classifyChar(IntOrAString intOrAString, uint256 length, uint256 i) private pure returns (uint256) {
+        if (i >= length) {
+            return CHAR_NONE;
+        }
+        uint256 c = byteAtV3(intOrAString, length, i);
+        if (c >= 0x30 && c <= 0x39) {
+            return CHAR_NUMBER;
+        }
+        if (c == 0x20 || c == 0x2d || c == 0x5f || (c >= 0x09 && c <= 0x0d)) {
+            return CHAR_WHITESPACE;
+        }
+        if (c >= 0x61 && c <= 0x7a) {
+            return CHAR_LOWER;
+        }
+        if (c >= 0x41 && c <= 0x5a) {
+            return CHAR_UPPER;
+        }
+        return CHAR_OTHER;
+    }
+
+    /// ASCII case of `c` under `mode`; `first` marks a word's first byte.
+    function applyCase(uint256 c, uint256 mode, bool first) private pure returns (uint256) {
+        if (mode == CASE_UPPER || (mode == CASE_CAPITALIZE && first)) {
+            return c >= 0x61 && c <= 0x7a ? c ^ 0x20 : c;
+        }
+        return c >= 0x41 && c <= 0x5a ? c | 0x20 : c;
     }
 
     /// Byte `i` of a V3 `IntOrAString` of byte length `length`.
