@@ -33,6 +33,7 @@ library LibIntOrAStringSlow {
         // Truncate s to output length.
         LibBytes.truncate(bytes(s), length);
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 data = uint256(bytes32(bytes(s)));
 
         // Shift data to the right to be flush with the length byte.
