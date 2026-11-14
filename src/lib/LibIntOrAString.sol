@@ -146,6 +146,7 @@ library LibIntOrAString {
         assembly ("memory-safe") {
             let sLength := and(intOrAString, lengthMask)
             let xLength := and(suffix, lengthMask)
+            // slither-disable-next-line incorrect-shift
             let mask := sub(shl(mul(8, xLength), 1), 1)
             result := and(iszero(gt(xLength, sLength)), eq(and(shr(8, intOrAString), mask), and(shr(8, suffix), mask)))
         }
@@ -188,7 +189,9 @@ library LibIntOrAString {
         assembly ("memory-safe") {
             let sLength := and(intOrAString, lengthMask)
             let xLength := and(suffix, lengthMask)
+            // slither-disable-next-line incorrect-shift
             let sData := and(shr(8, intOrAString), sub(shl(mul(8, sLength), 1), 1))
+            // slither-disable-next-line incorrect-shift
             let mask := sub(shl(mul(8, xLength), 1), 1)
             let stripped :=
                 mul(and(iszero(gt(xLength, sLength)), eq(and(sData, mask), and(shr(8, suffix), mask))), xLength)
@@ -208,6 +211,7 @@ library LibIntOrAString {
         if (nLength > sLength) {
             return false;
         }
+        // forge-lint: disable-next-line(incorrect-shift)
         uint256 mask = (1 << (8 * nLength)) - 1;
         uint256 sData = IntOrAString.unwrap(intOrAString) >> 8;
         uint256 nData = (IntOrAString.unwrap(needle) >> 8) & mask;
@@ -230,6 +234,7 @@ library LibIntOrAString {
             revert IntOrAStringSubsOutOfRange(start, end, length);
         }
         return packV3(
+            // forge-lint: disable-next-line(incorrect-shift)
             (IntOrAString.unwrap(intOrAString) >> (8 * (1 + length - end))) & ((1 << (8 * (end - start))) - 1),
             end - start
         );
@@ -366,7 +371,9 @@ library LibIntOrAString {
             uint256 b = classifyChar(intOrAString, length, current + 1);
             if (
                 (a != CHAR_UPPER && b == CHAR_UPPER) || (a != CHAR_NUMBER && b == CHAR_NUMBER)
-                    || (a == CHAR_UPPER && b == CHAR_UPPER && classifyChar(intOrAString, length, current + 2) == CHAR_LOWER)
+                    || (a == CHAR_UPPER
+                        && b == CHAR_UPPER
+                        && classifyChar(intOrAString, length, current + 2) == CHAR_LOWER)
             ) {
                 appendWord(intOrAString, length, start, current + 1, style, out);
                 start = current + 1;
@@ -437,6 +444,7 @@ library LibIntOrAString {
 
     /// The low `length` bytes of string data of a V3 `IntOrAString`.
     function dataV3(IntOrAString intOrAString, uint256 length) private pure returns (uint256) {
+        // forge-lint: disable-next-line(incorrect-shift)
         return (IntOrAString.unwrap(intOrAString) >> 8) & ((1 << (8 * length)) - 1);
     }
 
