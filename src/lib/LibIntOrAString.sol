@@ -76,10 +76,7 @@ type IntOrAString is uint256;
 /// available, such as a single storage slot or a single evm word on the stack or
 /// in memory. By not supporting fallbacks, we can provide a simpler and more
 /// efficient library, at the expense of requiring all strings to be shorter than
-/// 32 bytes. If strings are longer than 31 bytes, the library behaviour is
-/// implementation specific, most likely it will truncate somehow, which is
-/// likely not what the caller intended. The caller is responsible for keeping
-/// strings within the 31 byte limit.
+/// 32 bytes. Strings longer than 31 bytes revert with `IntOrAStringTooLong`.
 library LibIntOrAString {
     /// V3 version of toString, matching fromStringV3. This version puts the
     /// length in the low 5 bits of the IntOrAString, which means reading the
@@ -105,8 +102,9 @@ library LibIntOrAString {
         }
     }
 
-    /// Converts a `string` to an `IntOrAString`, taking the length modulo 32
-    /// in the process. The length and truthiness bits are stored in the low
+    /// Converts a `string` to an `IntOrAString`. Reverts with
+    /// `IntOrAStringTooLong` when the string is longer than 31 bytes. The
+    /// length and truthiness bits are stored in the low
     /// byte of the resulting `IntOrAString`. Any bytes beyond the length of
     /// the string will be zeroed out, to ensure that no potentially sensitive
     /// data in memory is copied into the `IntOrAString`. This version also
@@ -118,11 +116,12 @@ library LibIntOrAString {
     /// @param s The string to convert.
     /// @return intOrAString The resulting IntOrAString.
     function fromStringV3(string memory s) internal pure returns (IntOrAString intOrAString) {
-        uint256 lengthMask = LENGTH_MASK_V3;
+        uint256 length = bytes(s).length;
+        if (length > LENGTH_MASK_V3) {
+            revert IntOrAStringTooLong(length);
+        }
         uint256 truthyBits = TRUTHY_BITS_V3;
         assembly ("memory-safe") {
-            // 5 bits for length mods length by 32.
-            let length := and(mload(s), lengthMask)
             // Use some scratch space.
             mstore(0, or(truthyBits, length))
             // Copy the string data into scratch space, starting at byte 1.
