@@ -307,6 +307,7 @@ library LibIntOrAString {
     }
 
     /// V3 ASCII lower case, as Clojure `clojure.string/lower-case`.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 lower case string.
     function lowerCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -319,6 +320,7 @@ library LibIntOrAString {
     }
 
     /// V3 ASCII upper case, as Clojure `clojure.string/upper-case`.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 upper case string.
     function upperCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -331,6 +333,7 @@ library LibIntOrAString {
     }
 
     /// V3 camelCase, as camel-snake-kebab `->camelCase`.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 camelCase string.
     function camelCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -338,6 +341,7 @@ library LibIntOrAString {
     }
 
     /// V3 PascalCase, as camel-snake-kebab `->PascalCase`.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 PascalCase string.
     function pascalCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -346,6 +350,7 @@ library LibIntOrAString {
 
     /// V3 snake_case, as camel-snake-kebab `->snake_case`. Reverts with
     /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 snake_case string.
     function snakeCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -354,6 +359,7 @@ library LibIntOrAString {
 
     /// V3 SCREAMING_SNAKE_CASE, as camel-snake-kebab `->SCREAMING_SNAKE_CASE`.
     /// Reverts with `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 SCREAMING_SNAKE_CASE string.
     function screamingSnakeCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -362,6 +368,7 @@ library LibIntOrAString {
 
     /// V3 kebab-case, as camel-snake-kebab `->kebab-case`. Reverts with
     /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
+    /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 kebab-case string.
     function kebabCaseV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
