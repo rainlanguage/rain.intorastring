@@ -121,12 +121,13 @@ abstract contract ClojureStringOracleTest is Test {
     /// `s` as a V3 value, or `false` once `fromStringV3` is shown to revert
     /// for `s` over 31 bytes.
     function toV3(bytes memory s) internal returns (bool, IntOrAString) {
-        if (s.length > 31) {
+        bool isV3 = s.length <= 31;
+        if (!isV3) {
             vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, s.length));
             this.fromStringV3External(string(s));
-            return (false, IntOrAString.wrap(0));
+            return (isV3, IntOrAString.wrap(0));
         }
-        return (true, LibIntOrAString.fromStringV3(string(s)));
+        return (isV3, LibIntOrAString.fromStringV3(string(s)));
     }
 
     function checkString(
