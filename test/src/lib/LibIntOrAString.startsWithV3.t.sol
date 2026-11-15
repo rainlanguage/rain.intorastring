@@ -6,7 +6,7 @@ import {Test} from "forge-std-1.16.1/src/Test.sol";
 import {LibAffix} from "rain-string-0.3.10/src/lib/affix/LibAffix.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
+import {LibStringFuzz, AFFIX_PREFIX} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringStartsWithV3Test is Test {
@@ -72,6 +72,43 @@ contract LibIntOrAStringStartsWithV3Test is Test {
             prefix[changeIndex % prefix.length] ^= change;
         }
         checkStartsWith(s, prefix, sGarbage, prefixGarbage);
+    }
+
+    function checkStartsWithDifferential(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 prefixLength,
+        uint256 seed,
+        uint256[2] memory garbage,
+        bool ascii
+    ) internal pure {
+        bytes memory s = LibStringFuzz.fuzzBytes(data[0], bound(sLength, 0, 31), ascii);
+        bytes memory prefix = LibStringFuzz.fuzzAffix(
+            s, LibStringFuzz.fuzzBytes(data[1], bound(prefixLength, 0, 31), ascii), AFFIX_PREFIX, seed, ascii
+        );
+        checkStartsWith(s, prefix, garbage[0], garbage[1]);
+    }
+
+    /// Expected from rain.string `LibAffix.startsWith`.
+    function testStartsWithV3DifferentialAscii(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 prefixLength,
+        uint256 seed,
+        uint256[2] memory garbage
+    ) external pure {
+        checkStartsWithDifferential(data, sLength, prefixLength, seed, garbage, true);
+    }
+
+    /// Expected from rain.string `LibAffix.startsWith`.
+    function testStartsWithV3DifferentialAnyBytes(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 prefixLength,
+        uint256 seed,
+        uint256[2] memory garbage
+    ) external pure {
+        checkStartsWithDifferential(data, sLength, prefixLength, seed, garbage, false);
     }
 
     function testStartsWithV3Empty() external pure {

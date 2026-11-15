@@ -6,7 +6,7 @@ import {Test} from "forge-std-1.16.1/src/Test.sol";
 import {LibAffix} from "rain-string-0.3.10/src/lib/affix/LibAffix.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
+import {LibStringFuzz, AFFIX_SUFFIX} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringEndsWithV3Test is Test {
@@ -69,6 +69,43 @@ contract LibIntOrAStringEndsWithV3Test is Test {
             suffix[changeIndex % suffix.length] ^= change;
         }
         checkEndsWith(s, suffix, sGarbage, suffixGarbage);
+    }
+
+    function checkEndsWithDifferential(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 suffixLength,
+        uint256 seed,
+        uint256[2] memory garbage,
+        bool ascii
+    ) internal pure {
+        bytes memory s = LibStringFuzz.fuzzBytes(data[0], bound(sLength, 0, 31), ascii);
+        bytes memory suffix = LibStringFuzz.fuzzAffix(
+            s, LibStringFuzz.fuzzBytes(data[1], bound(suffixLength, 0, 31), ascii), AFFIX_SUFFIX, seed, ascii
+        );
+        checkEndsWith(s, suffix, garbage[0], garbage[1]);
+    }
+
+    /// Expected from rain.string `LibAffix.endsWith`.
+    function testEndsWithV3DifferentialAscii(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 suffixLength,
+        uint256 seed,
+        uint256[2] memory garbage
+    ) external pure {
+        checkEndsWithDifferential(data, sLength, suffixLength, seed, garbage, true);
+    }
+
+    /// Expected from rain.string `LibAffix.endsWith`.
+    function testEndsWithV3DifferentialAnyBytes(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 suffixLength,
+        uint256 seed,
+        uint256[2] memory garbage
+    ) external pure {
+        checkEndsWithDifferential(data, sLength, suffixLength, seed, garbage, false);
     }
 
     function testEndsWithV3Empty() external pure {

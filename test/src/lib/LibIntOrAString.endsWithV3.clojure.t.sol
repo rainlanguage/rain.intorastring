@@ -4,13 +4,15 @@ pragma solidity =0.8.25;
 
 import {LibIntOrAString} from "src/lib/LibIntOrAString.sol";
 import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {LibStringFuzz, AFFIX_SUFFIX} from "test/lib/LibStringFuzz.sol";
 
 contract LibIntOrAStringEndsWithV3ClojureTest is ClojureStringOracleTest {
     function checkEndsWith(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed, bool ascii)
         internal
     {
         bytes memory s = fuzzString(data[0], data[1], sLength, ascii);
-        bytes memory x = fuzzAffix(s, fuzzString(data[2], data[3], xLength, ascii), AFFIX_SUFFIX, seed, ascii);
+        bytes memory x =
+            LibStringFuzz.fuzzAffix(s, fuzzString(data[2], data[3], xLength, ascii), AFFIX_SUFFIX, seed, ascii);
         checkPredicate(LibIntOrAString.endsWithV3, "ends-with?", s, x);
     }
 

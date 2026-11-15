@@ -13,10 +13,6 @@ import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 abstract contract ClojureStringOracleTest is Test {
     uint256 constant MAX_FUZZ_LENGTH = 40;
 
-    uint256 constant AFFIX_PREFIX = 1;
-    uint256 constant AFFIX_SUFFIX = 2;
-    uint256 constant AFFIX_INNER = 3;
-
     string internal sOracle;
 
     function setUp() public virtual {
@@ -87,31 +83,6 @@ abstract contract ClojureStringOracleTest is Test {
             s[i] = ascii ? data[i] & 0x7f : data[i];
         }
         return s;
-    }
-
-    /// `x` itself, or a slice of `s` at `position` no longer than `x`,
-    /// unchanged or with one byte changed, chosen by `seed`.
-    function fuzzAffix(bytes memory s, bytes memory x, uint256 position, uint256 seed, bool ascii)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        if (seed % 3 == 0) {
-            return x;
-        }
-        uint256 length = x.length < s.length ? x.length : s.length;
-        uint256 start = position == AFFIX_PREFIX
-            ? 0
-            : position == AFFIX_SUFFIX ? s.length - length : (seed >> 64) % (s.length - length + 1);
-        bytes memory affix = new bytes(length);
-        for (uint256 i = 0; i < length; i++) {
-            affix[i] = s[start + i];
-        }
-        if (seed % 3 == 2 && length > 0) {
-            uint256 i = (seed >> 8) % length;
-            affix[i] ^= bytes1(uint8(1 + (seed >> 128) % (ascii ? 0x7f : 0xff)));
-        }
-        return affix;
     }
 
     function fromStringV3External(string memory s) external pure returns (IntOrAString) {

@@ -5,7 +5,7 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
+import {LibStringFuzz, AFFIX_SUFFIX} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringStripSuffixV3Test is Test {
@@ -77,6 +77,43 @@ contract LibIntOrAStringStripSuffixV3Test is Test {
             suffix[changeIndex % suffix.length] ^= change;
         }
         checkStripSuffix(s, suffix, sGarbage, suffixGarbage);
+    }
+
+    function checkStripSuffixDifferential(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 suffixLength,
+        uint256 seed,
+        uint256[2] memory garbage,
+        bool ascii
+    ) internal pure {
+        bytes memory s = LibStringFuzz.fuzzBytes(data[0], bound(sLength, 0, 31), ascii);
+        bytes memory suffix = LibStringFuzz.fuzzAffix(
+            s, LibStringFuzz.fuzzBytes(data[1], bound(suffixLength, 0, 31), ascii), AFFIX_SUFFIX, seed, ascii
+        );
+        checkStripSuffix(s, suffix, garbage[0], garbage[1]);
+    }
+
+    /// Strips when rain.string `LibAffix.endsWith`.
+    function testStripSuffixV3DifferentialAscii(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 suffixLength,
+        uint256 seed,
+        uint256[2] memory garbage
+    ) external pure {
+        checkStripSuffixDifferential(data, sLength, suffixLength, seed, garbage, true);
+    }
+
+    /// Strips when rain.string `LibAffix.endsWith`.
+    function testStripSuffixV3DifferentialAnyBytes(
+        bytes32[2] memory data,
+        uint256 sLength,
+        uint256 suffixLength,
+        uint256 seed,
+        uint256[2] memory garbage
+    ) external pure {
+        checkStripSuffixDifferential(data, sLength, suffixLength, seed, garbage, false);
     }
 
     function testStripSuffixV3Empty() external pure {

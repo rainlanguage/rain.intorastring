@@ -4,6 +4,7 @@ pragma solidity =0.8.25;
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
 import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {LibStringFuzz, AFFIX_SUFFIX} from "test/lib/LibStringFuzz.sol";
 
 contract LibIntOrAStringStripSuffixV3ClojureTest is ClojureStringOracleTest {
     function stripSuffixV3External(IntOrAString intOrAString, IntOrAString affix) external pure returns (IntOrAString) {
@@ -14,7 +15,8 @@ contract LibIntOrAStringStripSuffixV3ClojureTest is ClojureStringOracleTest {
         internal
     {
         bytes memory s = fuzzString(data[0], data[1], sLength, ascii);
-        bytes memory x = fuzzAffix(s, fuzzString(data[2], data[3], xLength, ascii), AFFIX_SUFFIX, seed, ascii);
+        bytes memory x =
+            LibStringFuzz.fuzzAffix(s, fuzzString(data[2], data[3], xLength, ascii), AFFIX_SUFFIX, seed, ascii);
         checkString(this.stripSuffixV3External, "strip-suffix", s, x);
     }
 
