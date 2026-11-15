@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2020 Rain Open Source Software Ltd
 pragma solidity =0.8.25;
 
+import {LibAffix} from "rain-string-0.3.10/src/lib/affix/LibAffix.sol";
+
 /// Ports over `bytes` of the clojure.string, cuerdas and camel-snake-kebab
 /// functions that the V3 string ops follow, one byte per character.
 library LibStringReference {
@@ -21,30 +23,14 @@ library LibStringReference {
         return out;
     }
 
-    /// `clojure.string/starts-with?`.
-    function startsWith(bytes memory s, bytes memory prefix) internal pure returns (bool) {
-        if (prefix.length > s.length) {
-            return false;
-        }
-        return keccak256(slice(s, 0, prefix.length)) == keccak256(prefix);
-    }
-
-    /// `clojure.string/ends-with?`.
-    function endsWith(bytes memory s, bytes memory suffix) internal pure returns (bool) {
-        if (suffix.length > s.length) {
-            return false;
-        }
-        return keccak256(slice(s, s.length - suffix.length, s.length)) == keccak256(suffix);
-    }
-
     /// cuerdas `strip-prefix`.
     function stripPrefix(bytes memory s, bytes memory prefix) internal pure returns (bytes memory) {
-        return startsWith(s, prefix) ? slice(s, prefix.length, s.length) : s;
+        return LibAffix.startsWith(s, prefix) ? slice(s, prefix.length, s.length) : s;
     }
 
     /// cuerdas `strip-suffix`.
     function stripSuffix(bytes memory s, bytes memory suffix) internal pure returns (bytes memory) {
-        return endsWith(s, suffix) ? slice(s, 0, s.length - suffix.length) : s;
+        return LibAffix.endsWith(s, suffix) ? slice(s, 0, s.length - suffix.length) : s;
     }
 
     /// `clojure.string/includes?`.

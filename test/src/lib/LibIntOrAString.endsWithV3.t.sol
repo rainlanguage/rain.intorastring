@@ -3,6 +3,7 @@
 pragma solidity =0.8.25;
 
 import {Test} from "forge-std-1.16.1/src/Test.sol";
+import {LibAffix} from "rain-string-0.3.10/src/lib/affix/LibAffix.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
@@ -10,7 +11,7 @@ import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringEndsWithV3Test is Test {
     function checkEndsWith(bytes memory s, bytes memory suffix, uint256 sGarbage, uint256 suffixGarbage) internal pure {
-        bool expected = LibStringReference.endsWith(s, suffix);
+        bool expected = LibAffix.endsWith(s, suffix);
         IntOrAString a = LibIntOrAString.fromStringV3(string(s));
         IntOrAString b = LibIntOrAString.fromStringV3(string(suffix));
         assertEq(LibIntOrAString.endsWithV3(a, b), expected);
@@ -95,7 +96,7 @@ contract LibIntOrAStringEndsWithV3Test is Test {
     }
 
     function checkV3(bytes memory s, bytes memory suffix, bool expected) internal pure {
-        assertEq(LibStringReference.endsWith(s, suffix), expected);
+        assertEq(LibAffix.endsWith(s, suffix), expected);
         checkEndsWith(s, suffix, 0, 0);
     }
 }

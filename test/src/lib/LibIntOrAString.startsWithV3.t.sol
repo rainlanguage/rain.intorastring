@@ -3,6 +3,7 @@
 pragma solidity =0.8.25;
 
 import {Test} from "forge-std-1.16.1/src/Test.sol";
+import {LibAffix} from "rain-string-0.3.10/src/lib/affix/LibAffix.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
@@ -13,7 +14,7 @@ contract LibIntOrAStringStartsWithV3Test is Test {
         internal
         pure
     {
-        bool expected = LibStringReference.startsWith(s, prefix);
+        bool expected = LibAffix.startsWith(s, prefix);
         IntOrAString a = LibIntOrAString.fromStringV3(string(s));
         IntOrAString b = LibIntOrAString.fromStringV3(string(prefix));
         assertEq(LibIntOrAString.startsWithV3(a, b), expected);
@@ -98,7 +99,7 @@ contract LibIntOrAStringStartsWithV3Test is Test {
     }
 
     function checkV3(bytes memory s, bytes memory prefix, bool expected) internal pure {
-        assertEq(LibStringReference.startsWith(s, prefix), expected);
+        assertEq(LibAffix.startsWith(s, prefix), expected);
         checkStartsWith(s, prefix, 0, 0);
     }
 }
