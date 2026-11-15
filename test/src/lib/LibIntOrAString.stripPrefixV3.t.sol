@@ -5,6 +5,7 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
+import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
@@ -107,5 +108,35 @@ contract LibIntOrAStringStripPrefixV3Test is Test {
     function checkV3(bytes memory s, bytes memory prefix, bytes memory expected) internal pure {
         assertEq(LibStringReference.stripPrefix(s, prefix), expected);
         checkStripPrefix(s, prefix, 0, 0);
+    }
+}
+
+contract LibIntOrAStringStripPrefixV3ClojureTest is ClojureStringOracleTest {
+    function stripPrefixV3External(IntOrAString intOrAString, IntOrAString affix) external pure returns (IntOrAString) {
+        return LibIntOrAString.stripPrefixV3(intOrAString, affix);
+    }
+
+    function checkStripPrefix(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed, bool ascii)
+        internal
+    {
+        bytes memory s = fuzzString(data[0], data[1], sLength, ascii);
+        bytes memory x = fuzzAffix(s, fuzzString(data[2], data[3], xLength, ascii), AFFIX_PREFIX, seed, ascii);
+        checkString(this.stripPrefixV3External, "strip-prefix", s, x);
+    }
+
+    /// Expected from cuerdas `strip-prefix`.
+    /// forge-config: default.fuzz.runs = 1000
+    function testStripPrefixV3ClojureAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+        external
+    {
+        checkStripPrefix(data, sLength, xLength, seed, true);
+    }
+
+    /// Expected from cuerdas `strip-prefix`.
+    /// forge-config: default.fuzz.runs = 1000
+    function testStripPrefixV3ClojureAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+        external
+    {
+        checkStripPrefix(data, sLength, xLength, seed, false);
     }
 }

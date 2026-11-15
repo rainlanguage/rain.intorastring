@@ -5,6 +5,7 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
+import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
 import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 
@@ -76,5 +77,33 @@ contract LibIntOrAStringConcatV3Test is Test {
     function checkTooLong(bytes memory a, bytes memory b, uint256 length) internal {
         vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, length));
         this.concatV3External(LibIntOrAString.fromStringV3(string(a)), LibIntOrAString.fromStringV3(string(b)));
+    }
+}
+
+contract LibIntOrAStringConcatV3ClojureTest is ClojureStringOracleTest {
+    function concatV3External(IntOrAString a, IntOrAString b) external pure returns (IntOrAString) {
+        return LibIntOrAString.concatV3(a, b);
+    }
+
+    /// Expected from Clojure `str`.
+    /// forge-config: default.fuzz.runs = 1000
+    function testConcatV3ClojureAscii(bytes32[4] memory data, uint256 aLength, uint256 bLength) external {
+        checkString(
+            this.concatV3External,
+            "str",
+            fuzzString(data[0], data[1], aLength, true),
+            fuzzString(data[2], data[3], bLength, true)
+        );
+    }
+
+    /// Expected from Clojure `str`.
+    /// forge-config: default.fuzz.runs = 1000
+    function testConcatV3ClojureAnyBytes(bytes32[4] memory data, uint256 aLength, uint256 bLength) external {
+        checkString(
+            this.concatV3External,
+            "str",
+            fuzzString(data[0], data[1], aLength, false),
+            fuzzString(data[2], data[3], bLength, false)
+        );
     }
 }
