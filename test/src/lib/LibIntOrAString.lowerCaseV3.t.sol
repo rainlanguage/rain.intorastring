@@ -5,7 +5,6 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
 import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
@@ -67,23 +66,5 @@ contract LibIntOrAStringLowerCaseV3Test is Test {
 
     function testLowerCaseV3ThirtyOneBytes() external {
         checkV3("ABCDEFGHIJKLMNOPQRSTUVWXYZ01234", "abcdefghijklmnopqrstuvwxyz01234");
-    }
-}
-
-contract LibIntOrAStringLowerCaseV3ClojureTest is ClojureStringOracleTest {
-    function lowerCaseV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
-        return LibIntOrAString.lowerCaseV3(intOrAString);
-    }
-
-    /// Expected from `clojure.string/lower-case`.
-    /// forge-config: default.fuzz.runs = 1000
-    function testLowerCaseV3ClojureAscii(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.lowerCaseV3External, "lower-case", fuzzString(data0, data1, length, true));
-    }
-
-    /// Expected from `clojure.string/lower-case`.
-    /// forge-config: default.fuzz.runs = 1000
-    function testLowerCaseV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.lowerCaseV3External, "lower-case", fuzzString(data0, data1, length, false));
     }
 }

@@ -5,7 +5,6 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
@@ -60,23 +59,5 @@ contract LibIntOrAStringTrimlV3Test is Test {
     function checkV3(bytes memory s, bytes memory expected) internal pure {
         assertEq(LibStringReference.triml(s), expected);
         checkTriml(s, 0);
-    }
-}
-
-contract LibIntOrAStringTrimlV3ClojureTest is ClojureStringOracleTest {
-    function trimlV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
-        return LibIntOrAString.trimlV3(intOrAString);
-    }
-
-    /// Expected from `clojure.string/triml`.
-    /// forge-config: default.fuzz.runs = 1000
-    function testTrimlV3ClojureAscii(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.trimlV3External, "triml", fuzzString(data0, data1, length, true));
-    }
-
-    /// Expected from `clojure.string/triml`.
-    /// forge-config: default.fuzz.runs = 1000
-    function testTrimlV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.trimlV3External, "triml", fuzzString(data0, data1, length, false));
     }
 }

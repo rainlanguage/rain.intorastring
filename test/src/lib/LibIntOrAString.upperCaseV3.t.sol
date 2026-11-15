@@ -5,7 +5,6 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
 import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
@@ -67,23 +66,5 @@ contract LibIntOrAStringUpperCaseV3Test is Test {
 
     function testUpperCaseV3ThirtyOneBytes() external {
         checkV3("abcdefghijklmnopqrstuvwxyz01234", "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234");
-    }
-}
-
-contract LibIntOrAStringUpperCaseV3ClojureTest is ClojureStringOracleTest {
-    function upperCaseV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
-        return LibIntOrAString.upperCaseV3(intOrAString);
-    }
-
-    /// Expected from `clojure.string/upper-case`.
-    /// forge-config: default.fuzz.runs = 1000
-    function testUpperCaseV3ClojureAscii(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.upperCaseV3External, "upper-case", fuzzString(data0, data1, length, true));
-    }
-
-    /// Expected from `clojure.string/upper-case`.
-    /// forge-config: default.fuzz.runs = 1000
-    function testUpperCaseV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.upperCaseV3External, "upper-case", fuzzString(data0, data1, length, false));
     }
 }

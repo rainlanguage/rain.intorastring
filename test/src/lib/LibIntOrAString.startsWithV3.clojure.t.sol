@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: LicenseRef-DCL-1.0
+// SPDX-FileCopyrightText: Copyright (c) 2020 Rain Open Source Software Ltd
+pragma solidity =0.8.25;
+
+import {LibIntOrAString} from "src/lib/LibIntOrAString.sol";
+import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+
+contract LibIntOrAStringStartsWithV3ClojureTest is ClojureStringOracleTest {
+    function checkStartsWith(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed, bool ascii)
+        internal
+    {
+        bytes memory s = fuzzString(data[0], data[1], sLength, ascii);
+        bytes memory x = fuzzAffix(s, fuzzString(data[2], data[3], xLength, ascii), AFFIX_PREFIX, seed, ascii);
+        checkPredicate(LibIntOrAString.startsWithV3, "starts-with?", s, x);
+    }
+
+    /// Expected from `clojure.string/starts-with?`.
+    /// forge-config: default.fuzz.runs = 1000
+    function testStartsWithV3ClojureAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+        external
+    {
+        checkStartsWith(data, sLength, xLength, seed, true);
+    }
+
+    /// Expected from `clojure.string/starts-with?`.
+    /// forge-config: default.fuzz.runs = 1000
+    function testStartsWithV3ClojureAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+        external
+    {
+        checkStartsWith(data, sLength, xLength, seed, false);
+    }
+}
