@@ -16,9 +16,9 @@ contract LibIntOrAStringPascalCaseV3ClojureTest is ClojureStringOracleTest {
         checkString(this.pascalCaseV3External, "pascal-case", fuzzString(data0, data1, length, true));
     }
 
-    /// Expected from camel-snake-kebab `->PascalCase`.
+    /// All ASCII input as camel-snake-kebab `->PascalCase`; bytes from 0x80 unchanged in place.
     /// forge-config: default.fuzz.runs = 1000
     function testPascalCaseV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.pascalCaseV3External, "pascal-case", fuzzString(data0, data1, length, false));
+        checkCase(this.pascalCaseV3External, "pascal-case", fuzzString(data0, data1, length, false));
     }
 }

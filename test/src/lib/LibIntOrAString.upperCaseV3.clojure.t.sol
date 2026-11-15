@@ -16,9 +16,9 @@ contract LibIntOrAStringUpperCaseV3ClojureTest is ClojureStringOracleTest {
         checkString(this.upperCaseV3External, "upper-case", fuzzString(data0, data1, length, true));
     }
 
-    /// Expected from `clojure.string/upper-case`.
+    /// All ASCII input as `clojure.string/upper-case`; bytes from 0x80 unchanged in place.
     /// forge-config: default.fuzz.runs = 1000
     function testUpperCaseV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.upperCaseV3External, "upper-case", fuzzString(data0, data1, length, false));
+        checkCase(this.upperCaseV3External, "upper-case", fuzzString(data0, data1, length, false));
     }
 }

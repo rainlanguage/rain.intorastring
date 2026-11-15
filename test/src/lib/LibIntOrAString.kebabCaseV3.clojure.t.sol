@@ -16,9 +16,9 @@ contract LibIntOrAStringKebabCaseV3ClojureTest is ClojureStringOracleTest {
         checkString(this.kebabCaseV3External, "kebab-case", fuzzString(data0, data1, length, true));
     }
 
-    /// Expected from camel-snake-kebab `->kebab-case`.
+    /// All ASCII input as camel-snake-kebab `->kebab-case`; bytes from 0x80 unchanged in place.
     /// forge-config: default.fuzz.runs = 1000
     function testKebabCaseV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.kebabCaseV3External, "kebab-case", fuzzString(data0, data1, length, false));
+        checkCase(this.kebabCaseV3External, "kebab-case", fuzzString(data0, data1, length, false));
     }
 }

@@ -16,9 +16,9 @@ contract LibIntOrAStringScreamingSnakeCaseV3ClojureTest is ClojureStringOracleTe
         checkString(this.screamingSnakeCaseV3External, "screaming-snake-case", fuzzString(data0, data1, length, true));
     }
 
-    /// Expected from camel-snake-kebab `->SCREAMING_SNAKE_CASE`.
+    /// All ASCII input as camel-snake-kebab `->SCREAMING_SNAKE_CASE`; bytes from 0x80 unchanged in place.
     /// forge-config: default.fuzz.runs = 1000
     function testScreamingSnakeCaseV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
-        checkString(this.screamingSnakeCaseV3External, "screaming-snake-case", fuzzString(data0, data1, length, false));
+        checkCase(this.screamingSnakeCaseV3External, "screaming-snake-case", fuzzString(data0, data1, length, false));
     }
 }

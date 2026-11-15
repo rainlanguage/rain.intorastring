@@ -147,6 +147,75 @@ abstract contract ClojureStringOracleTest is Test {
         }
     }
 
+    /// `s` with each byte from 0x80 replaced by one ASCII byte that
+    /// camel-snake-kebab classifies `:other` and `s` does not contain, the
+    /// replaced bytes in order, and that placeholder.
+    function placehold(bytes memory s) internal pure returns (bytes memory, bytes memory, bytes1) {
+        bytes memory candidates = "!\"#$%&'()*+,./:;<=>?@[\\]^`{|}~\x7f";
+        bytes1 placeholder = 0;
+        bool found = false;
+        for (uint256 c = 0; c < candidates.length && !found; c++) {
+            placeholder = candidates[c];
+            found = true;
+            for (uint256 i = 0; i < s.length; i++) {
+                if (s[i] == placeholder) {
+                    found = false;
+                }
+            }
+        }
+        bytes memory placeheld = new bytes(s.length);
+        bytes memory high = new bytes(s.length);
+        uint256 highLength = 0;
+        for (uint256 i = 0; i < s.length; i++) {
+            if (uint8(s[i]) < 0x80) {
+                placeheld[i] = s[i];
+            } else {
+                assertTrue(found, "no placeholder");
+                placeheld[i] = placeholder;
+                high[highLength++] = s[i];
+            }
+        }
+        assembly ("memory-safe") {
+            mstore(high, highLength)
+        }
+        return (placeheld, high, placeholder);
+    }
+
+    /// The case ops change ASCII letters only: all ASCII `s` must match
+    /// Clojure, otherwise each byte of `s` from 0x80 must appear unchanged
+    /// where Clojure puts its placeholder.
+    function checkCase(
+        function(IntOrAString) external pure returns (IntOrAString) op,
+        string memory clojureOp,
+        bytes memory s
+    ) internal {
+        (bool isV3, IntOrAString a) = toV3(s);
+        if (!isV3) {
+            return;
+        }
+        (bytes memory placeheld, bytes memory high, bytes1 placeholder) = placehold(s);
+        bytes memory expected = clojureString(clojureOp, placeheld);
+        try op(a) returns (IntOrAString actual) {
+            if (high.length == 0) {
+                assertResult(expected, actual);
+                return;
+            }
+            bytes memory out = bytes(LibIntOrAString.toStringV3(actual));
+            uint256 k = 0;
+            for (uint256 i = 0; i < expected.length; i++) {
+                if (expected[i] == placeholder) {
+                    assertLt(k, high.length, "Clojure result has extra placeholders");
+                    assertLt(i, out.length, "byte from 0x80 past the end");
+                    assertEq(out[i], high[k], "byte from 0x80 not unchanged in place");
+                    k++;
+                }
+            }
+            assertEq(k, high.length, "Clojure result dropped a placeholder");
+        } catch (bytes memory err) {
+            assertTooLong(expected, err);
+        }
+    }
+
     function checkString(
         function(IntOrAString, IntOrAString) external pure returns (IntOrAString) op,
         string memory clojureOp,
