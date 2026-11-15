@@ -22,7 +22,7 @@
         };
         clojure-string-oracle = pkgs.writeShellApplication {
           name = "clojure-string-oracle";
-          runtimeInputs = [ pkgs.babashka ];
+          runtimeInputs = [ pkgs.babashka-unwrapped ];
           text = ''
             exec bb --classpath ${camel-snake-kebab}:${cuerdas} ${./test/oracle/clojure_string.clj} "$@"
           '';
