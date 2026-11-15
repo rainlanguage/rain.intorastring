@@ -16,7 +16,7 @@ import {
     CMASK_GROUP_SEPARATOR,
     CMASK_RECORD_SEPARATOR,
     CMASK_UNIT_SEPARATOR
-} from "rain-string-0.3.9/src/lib/parse/LibParseCMask.sol";
+} from "rain-string-0.3.10/src/lib/parse/LibParseCMask.sol";
 
 /// @dev Mask for the 5 bit length from V3 IntOrAString.
 /// 0x1f = 00011111
