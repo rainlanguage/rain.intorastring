@@ -3,6 +3,7 @@
 pragma solidity =0.8.25;
 
 import {IntOrAString} from "src/lib/LibIntOrAString.sol";
+import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 import {LibBytes} from "rain-solmem-0.1.28/src/lib/LibBytes.sol";
 
 library LibIntOrAStringSlow {
@@ -21,8 +22,10 @@ library LibIntOrAStringSlow {
     }
 
     function fromStringV3Slow(string memory s) internal pure returns (IntOrAString intOrAString) {
-        // output length is input length modulo 32.
-        uint256 length = bytes(s).length % 32;
+        uint256 length = bytes(s).length;
+        if (length > 31) {
+            revert IntOrAStringTooLong(length);
+        }
 
         // length is the rightmost byte.
         intOrAString = IntOrAString.wrap(length);
