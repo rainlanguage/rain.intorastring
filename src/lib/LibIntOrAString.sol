@@ -3,6 +3,20 @@
 pragma solidity ^0.8.25;
 
 import {IntOrAStringTooLong, IntOrAStringSubsOutOfRange} from "../error/ErrIntOrAString.sol";
+import {
+    CMASK_NUMERIC_0_9,
+    CMASK_LOWER_ALPHA_A_Z,
+    CMASK_UPPER_ALPHA_A_Z,
+    CMASK_WHITESPACE,
+    CMASK_VERTICAL_TAB,
+    CMASK_FORM_FEED,
+    CMASK_DASH,
+    CMASK_UNDERSCORE,
+    CMASK_FILE_SEPARATOR,
+    CMASK_GROUP_SEPARATOR,
+    CMASK_RECORD_SEPARATOR,
+    CMASK_UNIT_SEPARATOR
+} from "rain-string-0.3.9/src/lib/parse/LibParseCMask.sol";
 
 /// @dev Mask for the 5 bit length from V3 IntOrAString.
 /// 0x1f = 00011111
@@ -26,6 +40,14 @@ uint256 constant CHAR_UPPER = 2;
 uint256 constant CHAR_NUMBER = 3;
 uint256 constant CHAR_WHITESPACE = 4;
 uint256 constant CHAR_NONE = 5;
+
+/// @dev Java `Character/isWhitespace` over ASCII.
+uint256 constant CMASK_JAVA_WHITESPACE = CMASK_WHITESPACE | CMASK_VERTICAL_TAB | CMASK_FORM_FEED | CMASK_FILE_SEPARATOR
+    | CMASK_GROUP_SEPARATOR | CMASK_RECORD_SEPARATOR | CMASK_UNIT_SEPARATOR;
+
+/// @dev camel-snake-kebab word separators.
+uint256 constant CMASK_WORD_SEPARATOR =
+    CMASK_WHITESPACE | CMASK_VERTICAL_TAB | CMASK_FORM_FEED | CMASK_DASH | CMASK_UNDERSCORE;
 
 /// @dev Output accumulated by a case conversion.
 struct CaseOutput {
@@ -413,17 +435,17 @@ library LibIntOrAString {
         if (i >= length) {
             return CHAR_NONE;
         }
-        uint256 c = byteAtV3(intOrAString, length, i);
-        if (c >= 0x30 && c <= 0x39) {
+        uint256 bit = uint256(1) << byteAtV3(intOrAString, length, i);
+        if (bit & CMASK_NUMERIC_0_9 != 0) {
             return CHAR_NUMBER;
         }
-        if (c == 0x20 || c == 0x2d || c == 0x5f || (c >= 0x09 && c <= 0x0d)) {
+        if (bit & CMASK_WORD_SEPARATOR != 0) {
             return CHAR_WHITESPACE;
         }
-        if (c >= 0x61 && c <= 0x7a) {
+        if (bit & CMASK_LOWER_ALPHA_A_Z != 0) {
             return CHAR_LOWER;
         }
-        if (c >= 0x41 && c <= 0x5a) {
+        if (bit & CMASK_UPPER_ALPHA_A_Z != 0) {
             return CHAR_UPPER;
         }
         return CHAR_OTHER;
@@ -431,10 +453,11 @@ library LibIntOrAString {
 
     /// ASCII case of `c` under `mode`; `first` marks a word's first byte.
     function applyCase(uint256 c, uint256 mode, bool first) private pure returns (uint256) {
+        uint256 bit = uint256(1) << c;
         if (mode == CASE_UPPER || (mode == CASE_CAPITALIZE && first)) {
-            return c >= 0x61 && c <= 0x7a ? c ^ 0x20 : c;
+            return bit & CMASK_LOWER_ALPHA_A_Z != 0 ? c ^ 0x20 : c;
         }
-        return c >= 0x41 && c <= 0x5a ? c | 0x20 : c;
+        return bit & CMASK_UPPER_ALPHA_A_Z != 0 ? c | 0x20 : c;
     }
 
     /// Byte `i` of a V3 `IntOrAString` of byte length `length`.
@@ -459,6 +482,6 @@ library LibIntOrAString {
 
     /// Java `Character/isWhitespace` over ASCII.
     function isWhitespace(uint256 c) private pure returns (bool) {
-        return c == 0x20 || (c >= 0x09 && c <= 0x0d) || (c >= 0x1c && c <= 0x1f);
+        return uint256(1) << c & CMASK_JAVA_WHITESPACE != 0;
     }
 }
