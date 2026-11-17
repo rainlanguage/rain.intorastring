@@ -7,10 +7,9 @@ import {
     CMASK_NUMERIC_0_9,
     CMASK_LOWER_ALPHA_A_Z,
     CMASK_UPPER_ALPHA_A_Z,
-    CMASK_WHITESPACE,
-    CMASK_FORM_FEED,
+    CMASK_ASCII_WHITESPACE,
     CMASK_ASCII
-} from "rain-string-0.3.10/src/lib/parse/LibParseCMask.sol";
+} from "rain-string-0.3.11/src/lib/parse/LibParseCMask.sol";
 
 /// @dev Mask for the 5 bit length from V3 IntOrAString.
 /// 0x1f = 00011111
@@ -33,9 +32,6 @@ uint256 constant CHAR_LOWER = 1;
 uint256 constant CHAR_UPPER = 2;
 uint256 constant CHAR_SEPARATOR = 3;
 uint256 constant CHAR_NONE = 4;
-
-/// @dev Rust `u8::is_ascii_whitespace`.
-uint256 constant CMASK_ASCII_WHITESPACE = CMASK_WHITESPACE | CMASK_FORM_FEED;
 
 /// @dev heck word separators: every non alphanumeric ASCII byte.
 uint256 constant CMASK_WORD_SEPARATOR =

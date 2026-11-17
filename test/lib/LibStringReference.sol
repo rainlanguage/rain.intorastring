@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2020 Rain Open Source Software Ltd
 pragma solidity =0.8.25;
 
-import {LibAffix} from "rain-string-0.3.10/src/lib/affix/LibAffix.sol";
+import {LibAffix} from "rain-string-0.3.11/src/lib/affix/LibAffix.sol";
 
 /// Ports over `bytes` of the Rust `[u8]` and `heck` 0.5 functions that the V3
 /// string ops follow. The heck ports read bytes from 0x80 as caseless
