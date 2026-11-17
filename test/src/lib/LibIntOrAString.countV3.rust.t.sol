@@ -3,26 +3,26 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 
-contract LibIntOrAStringCountV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringCountV3RustTest is RustStringOracleTest {
     function checkCount(bytes memory s) internal {
         (bool isV3, IntOrAString a) = toV3(s);
         if (!isV3) {
             return;
         }
-        assertEq(LibIntOrAString.countV3(a), abi.decode(clojure("count", s), (uint256)));
+        assertEq(LibIntOrAString.countV3(a), abi.decode(rust("count", s), (uint256)));
     }
 
-    /// Expected from Clojure `count`.
+    /// Expected from Rust `[u8]::len`.
     /// forge-config: default.fuzz.runs = 1000
-    function testCountV3ClojureAscii(bytes32 data0, bytes32 data1, uint256 length) external {
+    function testCountV3RustAscii(bytes32 data0, bytes32 data1, uint256 length) external {
         checkCount(fuzzString(data0, data1, length, true));
     }
 
-    /// Expected from Clojure `count`.
+    /// Expected from Rust `[u8]::len`.
     /// forge-config: default.fuzz.runs = 1000
-    function testCountV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
+    function testCountV3RustAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
         checkCount(fuzzString(data0, data1, length, false));
     }
 }

@@ -3,22 +3,22 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 
-contract LibIntOrAStringTrimV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringTrimV3RustTest is RustStringOracleTest {
     function trimV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
         return LibIntOrAString.trimV3(intOrAString);
     }
 
-    /// Expected from `clojure.string/trim`.
+    /// Expected from Rust `[u8]::trim_ascii`.
     /// forge-config: default.fuzz.runs = 1000
-    function testTrimV3ClojureAscii(bytes32 data0, bytes32 data1, uint256 length) external {
+    function testTrimV3RustAscii(bytes32 data0, bytes32 data1, uint256 length) external {
         checkString(this.trimV3External, "trim", fuzzString(data0, data1, length, true));
     }
 
-    /// Expected from `clojure.string/trim`.
+    /// Expected from Rust `[u8]::trim_ascii`.
     /// forge-config: default.fuzz.runs = 1000
-    function testTrimV3ClojureAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
+    function testTrimV3RustAnyBytes(bytes32 data0, bytes32 data1, uint256 length) external {
         checkString(this.trimV3External, "trim", fuzzString(data0, data1, length, false));
     }
 }

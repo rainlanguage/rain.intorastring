@@ -3,16 +3,16 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 
-contract LibIntOrAStringConcatV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringConcatV3RustTest is RustStringOracleTest {
     function concatV3External(IntOrAString a, IntOrAString b) external pure returns (IntOrAString) {
         return LibIntOrAString.concatV3(a, b);
     }
 
-    /// Expected from Clojure `str`.
+    /// Expected from Rust `[u8]::concat`.
     /// forge-config: default.fuzz.runs = 1000
-    function testConcatV3ClojureAscii(bytes32[4] memory data, uint256 aLength, uint256 bLength) external {
+    function testConcatV3RustAscii(bytes32[4] memory data, uint256 aLength, uint256 bLength) external {
         checkString(
             this.concatV3External,
             "str",
@@ -21,9 +21,9 @@ contract LibIntOrAStringConcatV3ClojureTest is ClojureStringOracleTest {
         );
     }
 
-    /// Expected from Clojure `str`.
+    /// Expected from Rust `[u8]::concat`.
     /// forge-config: default.fuzz.runs = 1000
-    function testConcatV3ClojureAnyBytes(bytes32[4] memory data, uint256 aLength, uint256 bLength) external {
+    function testConcatV3RustAnyBytes(bytes32[4] memory data, uint256 aLength, uint256 bLength) external {
         checkString(
             this.concatV3External,
             "str",

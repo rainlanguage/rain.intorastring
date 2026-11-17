@@ -15,7 +15,7 @@ optimizer_runs = 1000000
 bytecode_hash = "none"
 cbor_metadata = false
 
-# Clojure differential tests run babashka through `vm.ffi`.
+# Differential tests run the flake's Rust oracle through `vm.ffi`.
 ffi = true
 
 [fuzz]

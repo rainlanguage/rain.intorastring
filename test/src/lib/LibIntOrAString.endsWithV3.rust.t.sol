@@ -3,10 +3,10 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 import {LibStringFuzz, AFFIX_SUFFIX} from "test/lib/LibStringFuzz.sol";
 
-contract LibIntOrAStringEndsWithV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringEndsWithV3RustTest is RustStringOracleTest {
     function checkEndsWith(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed, bool ascii)
         internal
     {
@@ -16,17 +16,17 @@ contract LibIntOrAStringEndsWithV3ClojureTest is ClojureStringOracleTest {
         checkPredicate(LibIntOrAString.endsWithV3, "ends-with?", s, x);
     }
 
-    /// Expected from `clojure.string/ends-with?`.
+    /// Expected from Rust `[u8]::ends_with`.
     /// forge-config: default.fuzz.runs = 1000
-    function testEndsWithV3ClojureAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testEndsWithV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkEndsWith(data, sLength, xLength, seed, true);
     }
 
-    /// Expected from `clojure.string/ends-with?`.
+    /// Expected from Rust `[u8]::ends_with`.
     /// forge-config: default.fuzz.runs = 1000
-    function testEndsWithV3ClojureAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testEndsWithV3RustAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkEndsWith(data, sLength, xLength, seed, false);

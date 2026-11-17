@@ -7,10 +7,9 @@ import {Test, Vm} from "forge-std-1.16.1/src/Test.sol";
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
 import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 
-/// Differential fuzzing against the real clojure.string, cuerdas and
-/// camel-snake-kebab functions, run by babashka from the flake's
-/// `clojure-string-oracle` over `vm.ffi`, one byte per char (ISO-8859-1).
-abstract contract ClojureStringOracleTest is Test {
+/// Differential fuzzing against the real Rust `[u8]` and `heck` 0.5 functions,
+/// run from the flake's `rust-string-oracle` over `vm.ffi`.
+abstract contract RustStringOracleTest is Test {
     uint256 constant MAX_FUZZ_LENGTH = 40;
 
     string internal sOracle;
@@ -21,8 +20,8 @@ abstract contract ClojureStringOracleTest is Test {
         command[1] = "build";
         command[2] = "--no-link";
         command[3] = "--print-out-paths";
-        command[4] = ".#clojure-string-oracle";
-        sOracle = string.concat(string(ffiOk(command)), "/bin/clojure-string-oracle");
+        command[4] = ".#rust-string-oracle";
+        sOracle = string.concat(string(ffiOk(command)), "/bin/rust-string-oracle");
     }
 
     function ffiOk(string[] memory command) internal returns (bytes memory) {
@@ -31,7 +30,7 @@ abstract contract ClojureStringOracleTest is Test {
         return result.stdout;
     }
 
-    function clojure(string memory op, bytes memory a) internal returns (bytes memory) {
+    function rust(string memory op, bytes memory a) internal returns (bytes memory) {
         string[] memory command = new string[](3);
         command[0] = sOracle;
         command[1] = op;
@@ -39,7 +38,7 @@ abstract contract ClojureStringOracleTest is Test {
         return ffiOk(command);
     }
 
-    function clojure(string memory op, bytes memory a, bytes memory b) internal returns (bytes memory) {
+    function rust(string memory op, bytes memory a, bytes memory b) internal returns (bytes memory) {
         string[] memory command = new string[](4);
         command[0] = sOracle;
         command[1] = op;
@@ -48,7 +47,7 @@ abstract contract ClojureStringOracleTest is Test {
         return ffiOk(command);
     }
 
-    function clojureSubs(bytes memory s, uint256 start, uint256 end) internal returns (bool, bytes memory) {
+    function rustSubs(bytes memory s, uint256 start, uint256 end) internal returns (bool, bytes memory) {
         string[] memory command = new string[](5);
         command[0] = sOracle;
         command[1] = "subs";
@@ -58,20 +57,20 @@ abstract contract ClojureStringOracleTest is Test {
         return abi.decode(ffiOk(command), (bool, bytes));
     }
 
-    function clojureString(string memory op, bytes memory a) internal returns (bytes memory) {
-        (bool ok, bytes memory result) = abi.decode(clojure(op, a), (bool, bytes));
-        assertTrue(ok, "Clojure threw");
+    function rustString(string memory op, bytes memory a) internal returns (bytes memory) {
+        (bool ok, bytes memory result) = abi.decode(rust(op, a), (bool, bytes));
+        assertTrue(ok, "Rust returned no string");
         return result;
     }
 
-    function clojureString(string memory op, bytes memory a, bytes memory b) internal returns (bytes memory) {
-        (bool ok, bytes memory result) = abi.decode(clojure(op, a, b), (bool, bytes));
-        assertTrue(ok, "Clojure threw");
+    function rustString(string memory op, bytes memory a, bytes memory b) internal returns (bytes memory) {
+        (bool ok, bytes memory result) = abi.decode(rust(op, a, b), (bool, bytes));
+        assertTrue(ok, "Rust returned no string");
         return result;
     }
 
-    function clojurePredicate(string memory op, bytes memory a, bytes memory b) internal returns (bool) {
-        return abi.decode(clojure(op, a, b), (bool));
+    function rustPredicate(string memory op, bytes memory a, bytes memory b) internal returns (bool) {
+        return abi.decode(rust(op, a, b), (bool));
     }
 
     /// The first `length` (up to `MAX_FUZZ_LENGTH`) bytes of `data0` then
@@ -103,14 +102,14 @@ abstract contract ClojureStringOracleTest is Test {
 
     function checkString(
         function(IntOrAString) external pure returns (IntOrAString) op,
-        string memory clojureOp,
+        string memory rustOp,
         bytes memory s
     ) internal {
         (bool isV3, IntOrAString a) = toV3(s);
         if (!isV3) {
             return;
         }
-        bytes memory expected = clojureString(clojureOp, s);
+        bytes memory expected = rustString(rustOp, s);
         try op(a) returns (IntOrAString actual) {
             assertResult(expected, actual);
         } catch (bytes memory err) {
@@ -118,78 +117,9 @@ abstract contract ClojureStringOracleTest is Test {
         }
     }
 
-    /// `s` with each byte from 0x80 replaced by one ASCII byte that
-    /// camel-snake-kebab classifies `:other` and `s` does not contain, the
-    /// replaced bytes in order, and that placeholder.
-    function placehold(bytes memory s) internal pure returns (bytes memory, bytes memory, bytes1) {
-        bytes memory candidates = "!\"#$%&'()*+,./:;<=>?@[\\]^`{|}~\x7f";
-        bytes1 placeholder = 0;
-        bool found = false;
-        for (uint256 c = 0; c < candidates.length && !found; c++) {
-            placeholder = candidates[c];
-            found = true;
-            for (uint256 i = 0; i < s.length; i++) {
-                if (s[i] == placeholder) {
-                    found = false;
-                }
-            }
-        }
-        bytes memory placeheld = new bytes(s.length);
-        bytes memory high = new bytes(s.length);
-        uint256 highLength = 0;
-        for (uint256 i = 0; i < s.length; i++) {
-            if (uint8(s[i]) < 0x80) {
-                placeheld[i] = s[i];
-            } else {
-                assertTrue(found, "no placeholder");
-                placeheld[i] = placeholder;
-                high[highLength++] = s[i];
-            }
-        }
-        assembly ("memory-safe") {
-            mstore(high, highLength)
-        }
-        return (placeheld, high, placeholder);
-    }
-
-    /// The case ops change ASCII letters only: all ASCII `s` must match
-    /// Clojure, otherwise each byte of `s` from 0x80 must appear unchanged
-    /// where Clojure puts its placeholder.
-    function checkCase(
-        function(IntOrAString) external pure returns (IntOrAString) op,
-        string memory clojureOp,
-        bytes memory s
-    ) internal {
-        (bool isV3, IntOrAString a) = toV3(s);
-        if (!isV3) {
-            return;
-        }
-        (bytes memory placeheld, bytes memory high, bytes1 placeholder) = placehold(s);
-        bytes memory expected = clojureString(clojureOp, placeheld);
-        try op(a) returns (IntOrAString actual) {
-            if (high.length == 0) {
-                assertResult(expected, actual);
-                return;
-            }
-            bytes memory out = bytes(LibIntOrAString.toStringV3(actual));
-            uint256 k = 0;
-            for (uint256 i = 0; i < expected.length; i++) {
-                if (expected[i] == placeholder) {
-                    assertLt(k, high.length, "Clojure result has extra placeholders");
-                    assertLt(i, out.length, "byte from 0x80 past the end");
-                    assertEq(out[i], high[k], "byte from 0x80 not unchanged in place");
-                    k++;
-                }
-            }
-            assertEq(k, high.length, "Clojure result dropped a placeholder");
-        } catch (bytes memory err) {
-            assertTooLong(expected, err);
-        }
-    }
-
     function checkString(
         function(IntOrAString, IntOrAString) external pure returns (IntOrAString) op,
-        string memory clojureOp,
+        string memory rustOp,
         bytes memory s,
         bytes memory x
     ) internal {
@@ -198,7 +128,7 @@ abstract contract ClojureStringOracleTest is Test {
         if (!sIsV3 || !xIsV3) {
             return;
         }
-        bytes memory expected = clojureString(clojureOp, s, x);
+        bytes memory expected = rustString(rustOp, s, x);
         try op(a, b) returns (IntOrAString actual) {
             assertResult(expected, actual);
         } catch (bytes memory err) {
@@ -208,7 +138,7 @@ abstract contract ClojureStringOracleTest is Test {
 
     function checkPredicate(
         function(IntOrAString, IntOrAString) internal pure returns (bool) op,
-        string memory clojureOp,
+        string memory rustOp,
         bytes memory s,
         bytes memory x
     ) internal {
@@ -217,11 +147,11 @@ abstract contract ClojureStringOracleTest is Test {
         if (!sIsV3 || !xIsV3) {
             return;
         }
-        assertEq(op(a, b), clojurePredicate(clojureOp, s, x));
+        assertEq(op(a, b), rustPredicate(rustOp, s, x));
     }
 
     function assertResult(bytes memory expected, IntOrAString actual) internal pure {
-        assertLe(expected.length, 31, "Clojure result over 31 bytes but no revert");
+        assertLe(expected.length, 31, "Rust result over 31 bytes but no revert");
         assertEq(
             bytes32(IntOrAString.unwrap(actual)),
             bytes32(IntOrAString.unwrap(LibIntOrAString.fromStringV3(string(expected))))

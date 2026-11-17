@@ -3,10 +3,10 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 import {LibStringFuzz, AFFIX_INNER} from "test/lib/LibStringFuzz.sol";
 
-contract LibIntOrAStringIncludesV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringIncludesV3RustTest is RustStringOracleTest {
     function checkIncludes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed, bool ascii)
         internal
     {
@@ -16,17 +16,17 @@ contract LibIntOrAStringIncludesV3ClojureTest is ClojureStringOracleTest {
         checkPredicate(LibIntOrAString.includesV3, "includes?", s, x);
     }
 
-    /// Expected from `clojure.string/includes?`.
+    /// Expected from a Rust `[u8]::windows` search.
     /// forge-config: default.fuzz.runs = 1000
-    function testIncludesV3ClojureAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testIncludesV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkIncludes(data, sLength, xLength, seed, true);
     }
 
-    /// Expected from `clojure.string/includes?`.
+    /// Expected from a Rust `[u8]::windows` search.
     /// forge-config: default.fuzz.runs = 1000
-    function testIncludesV3ClojureAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testIncludesV3RustAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkIncludes(data, sLength, xLength, seed, false);

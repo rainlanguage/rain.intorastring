@@ -3,10 +3,10 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 import {LibStringFuzz, AFFIX_PREFIX} from "test/lib/LibStringFuzz.sol";
 
-contract LibIntOrAStringStartsWithV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringStartsWithV3RustTest is RustStringOracleTest {
     function checkStartsWith(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed, bool ascii)
         internal
     {
@@ -16,17 +16,17 @@ contract LibIntOrAStringStartsWithV3ClojureTest is ClojureStringOracleTest {
         checkPredicate(LibIntOrAString.startsWithV3, "starts-with?", s, x);
     }
 
-    /// Expected from `clojure.string/starts-with?`.
+    /// Expected from Rust `[u8]::starts_with`.
     /// forge-config: default.fuzz.runs = 1000
-    function testStartsWithV3ClojureAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testStartsWithV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkStartsWith(data, sLength, xLength, seed, true);
     }
 
-    /// Expected from `clojure.string/starts-with?`.
+    /// Expected from Rust `[u8]::starts_with`.
     /// forge-config: default.fuzz.runs = 1000
-    function testStartsWithV3ClojureAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testStartsWithV3RustAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkStartsWith(data, sLength, xLength, seed, false);

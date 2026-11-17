@@ -3,10 +3,10 @@
 pragma solidity =0.8.25;
 
 import {LibIntOrAString, IntOrAString} from "src/lib/LibIntOrAString.sol";
-import {ClojureStringOracleTest} from "test/abstract/ClojureStringOracleTest.sol";
+import {RustStringOracleTest} from "test/abstract/RustStringOracleTest.sol";
 import {LibStringFuzz, AFFIX_PREFIX} from "test/lib/LibStringFuzz.sol";
 
-contract LibIntOrAStringStripPrefixV3ClojureTest is ClojureStringOracleTest {
+contract LibIntOrAStringStripPrefixV3RustTest is RustStringOracleTest {
     function stripPrefixV3External(IntOrAString intOrAString, IntOrAString affix) external pure returns (IntOrAString) {
         return LibIntOrAString.stripPrefixV3(intOrAString, affix);
     }
@@ -20,17 +20,17 @@ contract LibIntOrAStringStripPrefixV3ClojureTest is ClojureStringOracleTest {
         checkString(this.stripPrefixV3External, "strip-prefix", s, x);
     }
 
-    /// Expected from cuerdas `strip-prefix`.
+    /// Expected from Rust `[u8]::strip_prefix`.
     /// forge-config: default.fuzz.runs = 1000
-    function testStripPrefixV3ClojureAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testStripPrefixV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkStripPrefix(data, sLength, xLength, seed, true);
     }
 
-    /// Expected from cuerdas `strip-prefix`.
+    /// Expected from Rust `[u8]::strip_prefix`.
     /// forge-config: default.fuzz.runs = 1000
-    function testStripPrefixV3ClojureAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
+    function testStripPrefixV3RustAnyBytes(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
         external
     {
         checkStripPrefix(data, sLength, xLength, seed, false);
