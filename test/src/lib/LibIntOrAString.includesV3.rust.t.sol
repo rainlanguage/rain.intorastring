@@ -18,9 +18,7 @@ contract LibIntOrAStringIncludesV3RustTest is RustStringOracleTest {
 
     /// Expected from a Rust `[u8]::windows` search.
     /// forge-config: default.fuzz.runs = 1000
-    function testIncludesV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
-        external
-    {
+    function testIncludesV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed) external {
         checkIncludes(data, sLength, xLength, seed, true);
     }
 

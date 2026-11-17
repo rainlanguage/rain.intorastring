@@ -18,9 +18,7 @@ contract LibIntOrAStringEndsWithV3RustTest is RustStringOracleTest {
 
     /// Expected from Rust `[u8]::ends_with`.
     /// forge-config: default.fuzz.runs = 1000
-    function testEndsWithV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed)
-        external
-    {
+    function testEndsWithV3RustAscii(bytes32[4] memory data, uint256 sLength, uint256 xLength, uint256 seed) external {
         checkEndsWith(data, sLength, xLength, seed, true);
     }
 

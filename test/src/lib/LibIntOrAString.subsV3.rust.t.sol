@@ -40,9 +40,7 @@ contract LibIntOrAStringSubsV3RustTest is RustStringOracleTest {
 
     /// Expected from Rust `[u8]::get(start..end)`, which is `None` out of range.
     /// forge-config: default.fuzz.runs = 1000
-    function testSubsV3RustAnyBytes(bytes32 data0, bytes32 data1, uint256 length, uint256 start, uint256 end)
-        external
-    {
+    function testSubsV3RustAnyBytes(bytes32 data0, bytes32 data1, uint256 length, uint256 start, uint256 end) external {
         checkSubs(
             fuzzString(data0, data1, length, false), bound(start, 0, MAX_FUZZ_LENGTH), bound(end, 0, MAX_FUZZ_LENGTH)
         );
