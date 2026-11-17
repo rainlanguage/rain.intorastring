@@ -10,9 +10,9 @@ import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringUpperCaseV3Test is Test {
-    /// Every camel-snake-kebab character class, the bytes either side of each
-    /// ASCII letter range, and bytes above ASCII.
-    bytes constant CASE_ALPHABET = "aAzZbB09_- \t\n\x0b\x0c\r.@[`{\x1c\x00\x80\xc1\xe1\xff";
+    /// Every heck character class, the bytes either side of each ASCII letter
+    /// and digit range, and bytes above ASCII.
+    bytes constant CASE_ALPHABET = "aAzZbB09/:_- \t\n\x0b\x0c\r.@[`{\x1c\x00\x7f\x80\xc1\xe1\xff";
 
     function upperCaseV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
         return LibIntOrAString.upperCaseV3(intOrAString);

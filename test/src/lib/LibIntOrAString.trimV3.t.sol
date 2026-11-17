@@ -9,7 +9,8 @@ import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringTrimV3Test is Test {
-    /// Every Java whitespace byte and the bytes either side of each run.
+    /// Every ASCII whitespace byte, the bytes either side of each run, and the
+    /// vertical tab and C0 separators, which are not ASCII whitespace.
     bytes constant WHITESPACE_ALPHABET = "\t\n\x0b\x0c\r\x1c\x1d\x1e\x1f \x00\x08\x0e\x1b!a\x85\xa0";
 
     function checkTrim(bytes memory s, uint256 garbage) internal pure {
@@ -30,7 +31,7 @@ contract LibIntOrAStringTrimV3Test is Test {
     function testTrimV3Empty() external pure {
         checkV3("", "");
         checkV3(" ", "");
-        checkV3("\t\n\x0b\x0c\r\x1c\x1d\x1e\x1f ", "");
+        checkV3("\t\n\x0c\r ", "");
     }
 
     function testTrimV3ThirtyOneBytes() external pure {
@@ -43,17 +44,18 @@ contract LibIntOrAStringTrimV3Test is Test {
     }
 
     function testTrimV3EachWhitespaceByte() external pure {
-        bytes memory whitespace = "\t\n\x0b\x0c\r\x1c\x1d\x1e\x1f ";
+        bytes memory whitespace = "\t\n\x0c\r ";
         for (uint256 i = 0; i < whitespace.length; i++) {
             checkV3(abi.encodePacked(whitespace[i]), "");
         }
     }
 
     function testTrimV3KeepsNonWhitespaceBytes() external pure {
-        bytes memory other = "\x00\x08\x0e\x1b!a\x7f\x85\xa0\xff";
+        bytes memory other = "\x00\x08\x0b\x0e\x1b\x1c\x1d\x1e\x1f!a\x7f\x85\xa0\xff";
         for (uint256 i = 0; i < other.length; i++) {
             checkV3(abi.encodePacked(other[i]), abi.encodePacked(other[i]));
         }
+        checkV3(" \x0b \x1f ", "\x0b \x1f");
     }
 
     function checkV3(bytes memory s, bytes memory expected) internal pure {

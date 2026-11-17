@@ -10,9 +10,9 @@ import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringScreamingSnakeCaseV3Test is Test {
-    /// Every camel-snake-kebab character class, the bytes either side of each
-    /// ASCII letter range, and bytes above ASCII.
-    bytes constant CASE_ALPHABET = "aAzZbB09_- \t\n\x0b\x0c\r.@[`{\x1c\x00\x80\xc1\xe1\xff";
+    /// Every heck character class, the bytes either side of each ASCII letter
+    /// and digit range, and bytes above ASCII.
+    bytes constant CASE_ALPHABET = "aAzZbB09/:_- \t\n\x0b\x0c\r.@[`{\x1c\x00\x7f\x80\xc1\xe1\xff";
 
     function screamingSnakeCaseV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
         return LibIntOrAString.screamingSnakeCaseV3(intOrAString);
@@ -57,6 +57,10 @@ contract LibIntOrAStringScreamingSnakeCaseV3Test is Test {
         checkV3(" x ", "X");
         checkV3("foo bar", "FOO_BAR");
         checkV3("foo\n\tbar", "FOO_BAR");
+        checkV3("foo.bar", "FOO_BAR");
+        checkV3("x$y", "X_Y");
+        checkV3("a\x1cb", "A_B");
+        checkV3("\x00a\x7fb/", "A_B");
     }
 
     function testScreamingSnakeCaseV3WordBoundaries() external {
@@ -68,34 +72,45 @@ contract LibIntOrAStringScreamingSnakeCaseV3Test is Test {
         checkV3("Foo_Bar", "FOO_BAR");
         checkV3("IPAddress", "IP_ADDRESS");
         checkV3("HTTPServer", "HTTP_SERVER");
-        checkV3("Adler32", "ADLER_32");
-        checkV3("Inet4Address", "INET_4_ADDRESS");
-        checkV3("Arc2D", "ARC_2_D");
-        checkV3("a123b", "A_123B");
-        checkV3("A123B", "A_123_B");
+        checkV3("Adler32", "ADLER32");
+        checkV3("Inet4Address", "INET4_ADDRESS");
+        checkV3("Arc2D", "ARC2_D");
+        checkV3("a123b", "A123B");
+        checkV3("A123B", "A123B");
         checkV3("flux-capacitor", "FLUX_CAPACITOR");
         checkV3("I am constant", "I_AM_CONSTANT");
         checkV3("object_id", "OBJECT_ID");
+        checkV3("s3Key", "S3_KEY");
+        checkV3("a1b2", "A1B2");
+        checkV3("XMLHttp2Request", "XML_HTTP2_REQUEST");
     }
 
     function testScreamingSnakeCaseV3NonLetters() external {
-        checkV3("x.Y", "X._Y");
-        checkV3("a\x1cb", "A\x1cB");
-        checkV3("@A[", "@_A[");
-        checkV3("`a{", "`A{");
-        checkV3("\xc1\xe1", "\xc1\xe1");
-        checkV3("\x80Z", "\x80_Z");
+        checkV3("x.Y", "X_Y");
+        checkV3("@A[", "A");
+        checkV3("`a{", "A");
         checkV3("0123456789", "0123456789");
+    }
+
+    /// Bytes from 0x80 are caseless word bytes, as digits are.
+    function testScreamingSnakeCaseV3NonAscii() external {
+        checkV3("\xc1\xe1", "\xc1\xe1");
+        checkV3("\x80Z", "\x80Z");
+        checkV3("\xc1Zb", "\xc1ZB");
+        checkV3("a\xc1B", "A\xc1_B");
+        checkV3("A\xc1b", "A\xc1B");
+        checkV3("x\xff.\x80y", "X\xff_\x80Y");
     }
 
     function testScreamingSnakeCaseV3ThirtyOneBytes() external {
         checkV3("abcdefghijklmnopqrstuvwxyzABCD", "ABCDEFGHIJKLMNOPQRSTUVWXYZ_ABCD");
+        checkV3("1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1", "1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1");
     }
 
     function testScreamingSnakeCaseV3TooLong() external {
         checkTooLong("abcdefghijklmnopqrstuvwxyzABCDE", 32);
-        checkTooLong("abcdefghijklmnopqrstuvwxyz01234", 32);
-        checkTooLong("1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1", 61);
+        checkTooLong("abcdefghijklmnopqrstuvwxyz0123A", 32);
+        checkTooLong("aBaBaBaBaBaBaBaBaBaBaBaBaBaBaBa", 46);
     }
 
     function checkTooLong(bytes memory s, uint256 length) internal {

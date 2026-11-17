@@ -10,9 +10,9 @@ import {LibStringFuzz} from "test/lib/LibStringFuzz.sol";
 import {LibStringReference} from "test/lib/LibStringReference.sol";
 
 contract LibIntOrAStringPascalCaseV3Test is Test {
-    /// Every camel-snake-kebab character class, the bytes either side of each
-    /// ASCII letter range, and bytes above ASCII.
-    bytes constant CASE_ALPHABET = "aAzZbB09_- \t\n\x0b\x0c\r.@[`{\x1c\x00\x80\xc1\xe1\xff";
+    /// Every heck character class, the bytes either side of each ASCII letter
+    /// and digit range, and bytes above ASCII.
+    bytes constant CASE_ALPHABET = "aAzZbB09/:_- \t\n\x0b\x0c\r.@[`{\x1c\x00\x7f\x80\xc1\xe1\xff";
 
     function pascalCaseV3External(IntOrAString intOrAString) external pure returns (IntOrAString) {
         return LibIntOrAString.pascalCaseV3(intOrAString);
@@ -57,6 +57,10 @@ contract LibIntOrAStringPascalCaseV3Test is Test {
         checkV3(" x ", "X");
         checkV3("foo bar", "FooBar");
         checkV3("foo\n\tbar", "FooBar");
+        checkV3("foo.bar", "FooBar");
+        checkV3("x$y", "XY");
+        checkV3("a\x1cb", "AB");
+        checkV3("\x00a\x7fb/", "AB");
     }
 
     function testPascalCaseV3WordBoundaries() external {
@@ -72,25 +76,36 @@ contract LibIntOrAStringPascalCaseV3Test is Test {
         checkV3("Inet4Address", "Inet4Address");
         checkV3("Arc2D", "Arc2D");
         checkV3("a123b", "A123b");
-        checkV3("A123B", "A123B");
+        checkV3("A123B", "A123b");
         checkV3("flux-capacitor", "FluxCapacitor");
         checkV3("I am constant", "IAmConstant");
         checkV3("object_id", "ObjectId");
+        checkV3("s3Key", "S3Key");
+        checkV3("a1b2", "A1b2");
+        checkV3("XMLHttp2Request", "XmlHttp2Request");
     }
 
     function testPascalCaseV3NonLetters() external {
-        checkV3("x.Y", "X.Y");
-        checkV3("a\x1cb", "A\x1cb");
-        checkV3("@A[", "@A[");
-        checkV3("`a{", "`a{");
-        checkV3("\xc1\xe1", "\xc1\xe1");
-        checkV3("\x80Z", "\x80Z");
+        checkV3("x.Y", "XY");
+        checkV3("@A[", "A");
+        checkV3("`a{", "A");
         checkV3("0123456789", "0123456789");
+    }
+
+    /// Bytes from 0x80 are caseless word bytes, as digits are.
+    function testPascalCaseV3NonAscii() external {
+        checkV3("\xc1\xe1", "\xc1\xe1");
+        checkV3("\x80Z", "\x80z");
+        checkV3("\xc1Zb", "\xc1zb");
+        checkV3("a\xc1B", "A\xc1B");
+        checkV3("A\xc1b", "A\xc1b");
+        checkV3("x\xff.\x80y", "X\xff\x80y");
     }
 
     function testPascalCaseV3ThirtyOneBytes() external {
         checkV3("abcdefghijklmnopqrstuvwxyz01234", "Abcdefghijklmnopqrstuvwxyz01234");
         checkV3("ABCDEFGHIJKLMNOPQRSTUVWXYZ01234", "Abcdefghijklmnopqrstuvwxyz01234");
-        checkV3("1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1", "1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1");
+        checkV3("1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1", "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1");
+        checkV3("aBaBaBaBaBaBaBaBaBaBaBaBaBaBaBa", "ABaBaBaBaBaBaBaBaBaBaBaBaBaBaBa");
     }
 }
