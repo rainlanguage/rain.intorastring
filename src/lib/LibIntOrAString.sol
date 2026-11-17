@@ -8,14 +8,8 @@ import {
     CMASK_LOWER_ALPHA_A_Z,
     CMASK_UPPER_ALPHA_A_Z,
     CMASK_WHITESPACE,
-    CMASK_VERTICAL_TAB,
     CMASK_FORM_FEED,
-    CMASK_DASH,
-    CMASK_UNDERSCORE,
-    CMASK_FILE_SEPARATOR,
-    CMASK_GROUP_SEPARATOR,
-    CMASK_RECORD_SEPARATOR,
-    CMASK_UNIT_SEPARATOR
+    CMASK_ASCII
 } from "rain-string-0.3.10/src/lib/parse/LibParseCMask.sol";
 
 /// @dev Mask for the 5 bit length from V3 IntOrAString.
@@ -33,21 +27,19 @@ uint256 constant CASE_UPPER = 1;
 /// @dev Case mode: first byte upper case, the rest lower case.
 uint256 constant CASE_CAPITALIZE = 2;
 
-/// @dev camel-snake-kebab character classes.
+/// @dev heck character classes. `CHAR_OTHER` is a caseless word byte.
 uint256 constant CHAR_OTHER = 0;
 uint256 constant CHAR_LOWER = 1;
 uint256 constant CHAR_UPPER = 2;
-uint256 constant CHAR_NUMBER = 3;
-uint256 constant CHAR_WHITESPACE = 4;
-uint256 constant CHAR_NONE = 5;
+uint256 constant CHAR_SEPARATOR = 3;
+uint256 constant CHAR_NONE = 4;
 
-/// @dev Java `Character/isWhitespace` over ASCII.
-uint256 constant CMASK_JAVA_WHITESPACE = CMASK_WHITESPACE | CMASK_VERTICAL_TAB | CMASK_FORM_FEED | CMASK_FILE_SEPARATOR
-    | CMASK_GROUP_SEPARATOR | CMASK_RECORD_SEPARATOR | CMASK_UNIT_SEPARATOR;
+/// @dev Rust `u8::is_ascii_whitespace`.
+uint256 constant CMASK_ASCII_WHITESPACE = CMASK_WHITESPACE | CMASK_FORM_FEED;
 
-/// @dev camel-snake-kebab word separators.
+/// @dev heck word separators: every non alphanumeric ASCII byte.
 uint256 constant CMASK_WORD_SEPARATOR =
-    CMASK_WHITESPACE | CMASK_VERTICAL_TAB | CMASK_FORM_FEED | CMASK_DASH | CMASK_UNDERSCORE;
+    CMASK_ASCII & ~(CMASK_NUMERIC_0_9 | CMASK_LOWER_ALPHA_A_Z | CMASK_UPPER_ALPHA_A_Z);
 
 /// @dev Output accumulated by a case conversion.
 struct CaseOutput {
@@ -221,7 +213,7 @@ library LibIntOrAString {
         return result;
     }
 
-    /// V3 substring check, as Clojure `clojure.string/includes?`. The empty
+    /// V3 substring check. The empty
     /// string is included in every string.
     /// @param intOrAString The V3 `IntOrAString` to search.
     /// @param needle The V3 `IntOrAString` to find.
@@ -244,7 +236,7 @@ library LibIntOrAString {
         return false;
     }
 
-    /// V3 substring of bytes `[start, end)`, as Clojure `subs`.
+    /// V3 substring of bytes `[start, end)`.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @param start The first byte index, inclusive.
     /// @param end The last byte index, exclusive.
@@ -261,8 +253,7 @@ library LibIntOrAString {
         );
     }
 
-    /// V3 `intOrAString` without leading whitespace, as Clojure
-    /// `clojure.string/triml` (Java `Character/isWhitespace`).
+    /// V3 `intOrAString` without leading ASCII whitespace.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 trimmed string.
     function trimlV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -274,8 +265,7 @@ library LibIntOrAString {
         return subsV3(intOrAString, start, length);
     }
 
-    /// V3 `intOrAString` without trailing whitespace, as Clojure
-    /// `clojure.string/trimr` (Java `Character/isWhitespace`).
+    /// V3 `intOrAString` without trailing ASCII whitespace.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 trimmed string.
     function trimrV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
@@ -287,15 +277,14 @@ library LibIntOrAString {
         return subsV3(intOrAString, 0, end);
     }
 
-    /// V3 `intOrAString` without leading or trailing whitespace, as Clojure
-    /// `clojure.string/trim`.
+    /// V3 `intOrAString` without leading or trailing ASCII whitespace.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 trimmed string.
     function trimV3(IntOrAString intOrAString) internal pure returns (IntOrAString) {
         return trimlV3(trimrV3(intOrAString));
     }
 
-    /// V3 concatenation of `a` then `b`, as Clojure `str`. Reverts with
+    /// V3 concatenation of `a` then `b`. Reverts with
     /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
     /// @param a The V3 `IntOrAString` prefix.
     /// @param b The V3 `IntOrAString` suffix.
@@ -306,7 +295,7 @@ library LibIntOrAString {
         return packV3((dataV3(a, aLength) << (8 * bLength)) | dataV3(b, bLength), aLength + bLength);
     }
 
-    /// V3 ASCII lower case, as Clojure `clojure.string/lower-case`.
+    /// V3 ASCII lower case.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 lower case string.
@@ -319,7 +308,7 @@ library LibIntOrAString {
         return packV3(data, length);
     }
 
-    /// V3 ASCII upper case, as Clojure `clojure.string/upper-case`.
+    /// V3 ASCII upper case.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 upper case string.
@@ -332,7 +321,7 @@ library LibIntOrAString {
         return packV3(data, length);
     }
 
-    /// V3 camelCase, as camel-snake-kebab `->camelCase`.
+    /// V3 camelCase.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 camelCase string.
@@ -340,7 +329,7 @@ library LibIntOrAString {
         return convertCaseV3(intOrAString, CASE_LOWER, CASE_CAPITALIZE, 0);
     }
 
-    /// V3 PascalCase, as camel-snake-kebab `->PascalCase`.
+    /// V3 PascalCase.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
     /// @return The canonical V3 PascalCase string.
@@ -348,7 +337,7 @@ library LibIntOrAString {
         return convertCaseV3(intOrAString, CASE_CAPITALIZE, CASE_CAPITALIZE, 0);
     }
 
-    /// V3 snake_case, as camel-snake-kebab `->snake_case`. Reverts with
+    /// V3 snake_case. Reverts with
     /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
@@ -357,7 +346,7 @@ library LibIntOrAString {
         return convertCaseV3(intOrAString, CASE_LOWER, CASE_LOWER, 0x5f);
     }
 
-    /// V3 SCREAMING_SNAKE_CASE, as camel-snake-kebab `->SCREAMING_SNAKE_CASE`.
+    /// V3 SCREAMING_SNAKE_CASE.
     /// Reverts with `IntOrAStringTooLong` when the result exceeds 31 bytes.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
@@ -366,7 +355,7 @@ library LibIntOrAString {
         return convertCaseV3(intOrAString, CASE_UPPER, CASE_UPPER, 0x5f);
     }
 
-    /// V3 kebab-case, as camel-snake-kebab `->kebab-case`. Reverts with
+    /// V3 kebab-case. Reverts with
     /// `IntOrAStringTooLong` when the result exceeds 31 bytes.
     /// Only ASCII letters change case; bytes at or above 0x80 are unchanged.
     /// @param intOrAString The V3 `IntOrAString`.
@@ -375,11 +364,9 @@ library LibIntOrAString {
         return convertCaseV3(intOrAString, CASE_LOWER, CASE_LOWER, 0x2d);
     }
 
-    /// camel-snake-kebab `convert-case` over its `generic-split` word
-    /// boundaries: whitespace, `-` and `_` separate words, and a word ends
-    /// before an upper case byte that follows a non upper case byte, before a
-    /// digit that follows a non digit, and before the last upper case byte of
-    /// a capital run followed by a lower case byte.
+    /// Case conversion over Rust `heck` 0.5 word boundaries. Non alphanumeric
+    /// ASCII bytes separate words and are dropped. Digits and bytes at or above
+    /// 0x80 are caseless word bytes, unchanged.
     function convertCaseV3(IntOrAString intOrAString, uint256 firstMode, uint256 restMode, uint256 separator)
         private
         pure
@@ -389,22 +376,27 @@ library LibIntOrAString {
         CaseOutput memory out = CaseOutput(0, 0, 0);
         uint256 style = firstMode | (restMode << 8) | (separator << 16);
         uint256 start = 0;
+        uint256 mode = CHAR_OTHER;
         for (uint256 current = 0; current < length; current++) {
             uint256 a = classifyChar(intOrAString, length, current);
-            if (a == CHAR_WHITESPACE) {
+            if (a == CHAR_SEPARATOR) {
                 appendWord(intOrAString, length, start, current, style, out);
                 start = current + 1;
+                mode = CHAR_OTHER;
                 continue;
             }
             uint256 b = classifyChar(intOrAString, length, current + 1);
-            if (
-                (a != CHAR_UPPER && b == CHAR_UPPER) || (a != CHAR_NUMBER && b == CHAR_NUMBER)
-                    || (a == CHAR_UPPER
-                        && b == CHAR_UPPER
-                        && classifyChar(intOrAString, length, current + 2) == CHAR_LOWER)
-            ) {
+            uint256 nextMode = a == CHAR_OTHER ? mode : a;
+            if (nextMode == CHAR_LOWER && b == CHAR_UPPER) {
                 appendWord(intOrAString, length, start, current + 1, style, out);
                 start = current + 1;
+                mode = CHAR_OTHER;
+            } else if (mode == CHAR_UPPER && a == CHAR_UPPER && b == CHAR_LOWER) {
+                appendWord(intOrAString, length, start, current, style, out);
+                start = current;
+                mode = CHAR_OTHER;
+            } else {
+                mode = nextMode;
             }
         }
         appendWord(intOrAString, length, start, length, style, out);
@@ -436,17 +428,14 @@ library LibIntOrAString {
         out.words++;
     }
 
-    /// camel-snake-kebab class of byte `i`, or `CHAR_NONE` past the end.
+    /// heck class of byte `i`, or `CHAR_NONE` past the end.
     function classifyChar(IntOrAString intOrAString, uint256 length, uint256 i) private pure returns (uint256) {
         if (i >= length) {
             return CHAR_NONE;
         }
         uint256 bit = uint256(1) << byteAtV3(intOrAString, length, i);
-        if (bit & CMASK_NUMERIC_0_9 != 0) {
-            return CHAR_NUMBER;
-        }
         if (bit & CMASK_WORD_SEPARATOR != 0) {
-            return CHAR_WHITESPACE;
+            return CHAR_SEPARATOR;
         }
         if (bit & CMASK_LOWER_ALPHA_A_Z != 0) {
             return CHAR_LOWER;
@@ -486,8 +475,8 @@ library LibIntOrAString {
         return IntOrAString.wrap((data << 8) | TRUTHY_BITS_V3 | length);
     }
 
-    /// Java `Character/isWhitespace` over ASCII.
+    /// Rust `u8::is_ascii_whitespace`.
     function isWhitespace(uint256 c) private pure returns (bool) {
-        return uint256(1) << c & CMASK_JAVA_WHITESPACE != 0;
+        return uint256(1) << c & CMASK_ASCII_WHITESPACE != 0;
     }
 }
