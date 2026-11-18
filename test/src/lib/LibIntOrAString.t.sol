@@ -5,8 +5,7 @@ pragma solidity =0.8.25;
 import {Test} from "forge-std-1.16.1/src/Test.sol";
 
 import {LibIntOrAString, IntOrAString, LENGTH_MASK_V3, TRUTHY_BITS_V3} from "src/lib/LibIntOrAString.sol";
-import {LibBytes} from "rain-solmem-0.1.28/src/lib/LibBytes.sol";
-import {LibMemCpy} from "rain-solmem-0.1.28/src/lib/LibMemCpy.sol";
+import {IntOrAStringTooLong} from "src/error/ErrIntOrAString.sol";
 import {LibIntOrAStringSlow} from "test/lib/LibIntOrAStringSlow.sol";
 
 contract LibIntOrAStringTest is Test {
@@ -33,25 +32,29 @@ contract LibIntOrAStringTest is Test {
         assertEq(LibIntOrAString.toStringV3(LibIntOrAString.fromStringV3(s)), s);
     }
 
-    /// All strings of any length should round trip but be truncated to their
-    /// length modulo 32.
-    function testRoundTripStringTruncated(string memory s) external pure {
-        putGarbageInUnallocatedMemory();
-        bytes memory truncated = new bytes((bytes(s).length));
-        LibMemCpy.unsafeCopyBytesTo(
-            LibBytes.dataPointer(bytes(s)), LibBytes.dataPointer(bytes(truncated)), bytes(s).length
-        );
-        LibBytes.truncate(truncated, truncated.length % 32);
+    function fromStringV3External(string memory s) external pure returns (IntOrAString) {
+        return LibIntOrAString.fromStringV3(s);
+    }
 
-        assertEq(LibIntOrAString.toStringV3(LibIntOrAString.fromStringV3(s)), string(truncated));
+    /// Strings longer than 31 bytes revert instead of being truncated.
+    function testFromStringV3TooLong(string memory s, bytes32 padding) external {
+        putGarbageInUnallocatedMemory();
+        string memory long = string.concat(s, string(abi.encodePacked(padding)));
+        vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, bytes(long).length));
+        this.fromStringV3External(long);
     }
 
     /// Test directly that the length (rightmost byte) of an `IntOrAString` is
-    /// the length of the string it was created from modulo 32.
-    function testFromStringV3Length(string memory s) external pure {
+    /// the length of the string it was created from.
+    function testFromStringV3Length(string memory s) external {
         putGarbageInUnallocatedMemory();
-        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
-        assertEq(IntOrAString.unwrap(intOrAString) & LENGTH_MASK_V3, bytes(s).length % 32);
+        if (bytes(s).length > 31) {
+            vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, bytes(s).length));
+            this.fromStringV3External(s);
+        } else {
+            IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+            assertEq(IntOrAString.unwrap(intOrAString) & LENGTH_MASK_V3, bytes(s).length);
+        }
     }
 
     /// Test that building an `IntOrAString` from a string never includes any
@@ -59,7 +62,7 @@ contract LibIntOrAStringTest is Test {
     function testFromStringV3Garbage(string memory s, uint256 truncatedLength) external pure {
         putGarbageInUnallocatedMemory();
         vm.assume(bytes(s).length > 1);
-        truncatedLength = bound(truncatedLength, 1, bytes(s).length - 1);
+        truncatedLength = bound(truncatedLength, 1, bytes(s).length - 1 < 31 ? bytes(s).length - 1 : 31);
         // Set the length of the string to the truncated length without modifying
         // anything else in memory, so this will leave garbage bytes beyond the
         // new truncated length of the string.
@@ -67,7 +70,7 @@ contract LibIntOrAStringTest is Test {
             mstore(s, truncatedLength)
         }
         IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
-        assertEq(0, IntOrAString.unwrap(intOrAString) >> (((truncatedLength % 32) + 1) * 8));
+        assertEq(0, IntOrAString.unwrap(intOrAString) >> ((truncatedLength + 1) * 8));
     }
 
     /// Test that building an `IntOrAString` from a 0 length string never
@@ -104,16 +107,22 @@ contract LibIntOrAStringTest is Test {
     }
 
     /// Test `fromStringV3` against reference implementation.
-    function testFromStringV3AgainstSlow(string memory s) external pure {
+    function testFromStringV3AgainstSlow(string memory s) external {
         putGarbageInUnallocatedMemory();
-        IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
-        IntOrAString slow = LibIntOrAStringSlow.fromStringV3Slow(s);
-        assertEq(IntOrAString.unwrap(intOrAString), IntOrAString.unwrap(slow));
+        if (bytes(s).length > 31) {
+            vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, bytes(s).length));
+            this.fromStringV3External(s);
+        } else {
+            IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
+            IntOrAString slow = LibIntOrAStringSlow.fromStringV3Slow(s);
+            assertEq(IntOrAString.unwrap(intOrAString), IntOrAString.unwrap(slow));
+        }
     }
 
     /// Test `fromStringV3` always returns truthy numeric values according to
     /// float logic (i.e. != 0 when excluding the exponent bytes).
     function testFromStringV3Truthy(string memory s) external pure {
+        vm.assume(bytes(s).length <= 31);
         putGarbageInUnallocatedMemory();
         IntOrAString intOrAString = LibIntOrAString.fromStringV3(s);
         assertTrue(int224(uint224(IntOrAString.unwrap(intOrAString))) != 0);
@@ -135,7 +144,7 @@ contract LibIntOrAStringTest is Test {
 
     /// Layout as documented: string bytes sit immediately above the low byte,
     /// whose low 5 bits are the length and whose high 3 bits are set.
-    function testFromStringV3KnownAnswers() external pure {
+    function testFromStringV3KnownAnswers() external {
         putGarbageInUnallocatedMemory();
         assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("")), 0xe0);
         assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("a")), 0x61e1);
@@ -144,10 +153,10 @@ contract LibIntOrAStringTest is Test {
             IntOrAString.unwrap(LibIntOrAString.fromStringV3("abcdefghijklmnopqrstuvwxyz01234")),
             0x6162636465666768696a6b6c6d6e6f707172737475767778797a3031323334ff
         );
-        // 32 bytes wraps to length 0 with no data.
-        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("abcdefghijklmnopqrstuvwxyz012345")), 0xe0);
-        // 33 bytes wraps to length 1, keeping only the first byte.
-        assertEq(IntOrAString.unwrap(LibIntOrAString.fromStringV3("abcdefghijklmnopqrstuvwxyz0123456")), 0x61e1);
+        vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, 32));
+        this.fromStringV3External("abcdefghijklmnopqrstuvwxyz012345");
+        vm.expectRevert(abi.encodeWithSelector(IntOrAStringTooLong.selector, 33));
+        this.fromStringV3External("abcdefghijklmnopqrstuvwxyz0123456");
     }
 
     /// Only the low 5 bits of the length byte and the bytes the length covers

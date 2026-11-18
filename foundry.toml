@@ -15,12 +15,16 @@ optimizer_runs = 1000000
 bytecode_hash = "none"
 cbor_metadata = false
 
+# Differential tests run the flake's Rust oracle through `vm.ffi`.
+ffi = true
+
 [fuzz]
 runs = 2048
 
 [dependencies]
 forge-std = "1.16.1"
 "rain-solmem" = "0.1.28"
+rain-string = "0.3.11"
 
 [soldeer]
 recursive_deps = false

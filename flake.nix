@@ -8,9 +8,23 @@
 
   outputs =
     { flake-utils, rainix, ... }:
-    flake-utils.lib.eachDefaultSystem (system: {
-      packages = rainix.packages.${system};
-      devShells = rainix.devShells.${system};
-    });
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = rainix.pkgs.${system};
+        rust-string-oracle = pkgs.rustPlatform.buildRustPackage {
+          pname = "rust-string-oracle";
+          version = "0.1.0";
+          src = ./test/oracle;
+          cargoLock.lockFile = ./test/oracle/Cargo.lock;
+        };
+      in
+      {
+        packages = rainix.packages.${system} // {
+          inherit rust-string-oracle;
+        };
+        devShells = rainix.devShells.${system};
+      }
+    );
 
 }
