@@ -22,7 +22,7 @@ ffi = true
 runs = 2048
 
 [dependencies]
-forge-std = "1.16.1"
+forge-std = "1.17.0"
 "rain-solmem" = "0.1.28"
 rain-string = "0.3.11"
 
